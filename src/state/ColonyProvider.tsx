@@ -27,6 +27,7 @@ const initialState: ColonyState = {
       status: "working",
       specialty: "mining",
       hungry: false,  // D1: no dwarf starts hungry
+      hasTool: false, // D2: no dwarf starts with a tool
     },
     {
       id: "dwarf-2",
@@ -37,6 +38,7 @@ const initialState: ColonyState = {
       status: "working",
       specialty: "woodcutting",
       hungry: false,  // D1: no dwarf starts hungry
+      hasTool: false, // D2: no dwarf starts with a tool
     },
     {
       id: "dwarf-3",
@@ -46,6 +48,7 @@ const initialState: ColonyState = {
       assignment: null,
       status: "idle",
       hungry: false,  // D1: no dwarf starts hungry
+      hasTool: false, // D2: no dwarf starts with a tool
     },
   ],
 };
@@ -98,6 +101,46 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
         ...current,
       ].slice(0, 6),
     );
+  }
+
+  // D2: give a tool from storage to a dwarf
+  function equipTool(id: string) {
+    setColony((current) => {
+      const dwarf = current.dwarves.find((item) => item.id === id);
+
+      // D2: invalid attempt changes nothing
+      if(!dwarf || dwarf.hasTool || dwarf.status === "expedition" || current.resources.tools < 1) {
+        return current;
+      }
+
+      return {
+        ...current,
+        resources: { ...current.resources, tools: current.resources.tools - 1 }, // D2: one tool leaves storage
+        dwarves: current.dwarves.map((item) =>
+          item.id === id ? { ...item, hasTool: true } : item, // D2: ...and goes to this dwarf
+        ),
+      };
+    });
+  }
+
+  // D2: take a tool from dwarf and return it to storage
+  function returnTool(id: string) {
+    setColony((current) => {
+      const dwarf = current.dwarves.find((item) => item.id === id);
+
+      // D2: invalid attempt changes nothing
+      if(!dwarf || !dwarf.hasTool || dwarf.status === "expedition") {
+        return current;
+      }
+
+      return {
+        ...current,
+        resources: { ...current.resources, tools: current.resources.tools + 1 }, // D2: one tool is added to storage
+        dwarves: current.dwarves.map((item) =>
+          item.id === id ? { ...item, hasTool: false } : item, // D2: ...taken back from this dwarf
+        ),
+      };
+    });
   }
 
   function craftTool() {
@@ -217,6 +260,8 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     assignDwarf,
     craftTool,
     sendExpedition,
+    equipTool,  // D2
+    returnTool,  // D2
   };
 
   return <ColonyContext value={value}>{children}</ColonyContext>;

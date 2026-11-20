@@ -14,8 +14,10 @@ export function advanceDay(state: ColonyState): ColonyState {
 
     const output = production[dwarf.assignment];
 
+    const bonus = dwarf.hasTool && (dwarf.assignment === "woodcutting" || dwarf.assignment === "mining") ? 1 : 0; // D2: +1 with a tool on a compatible job
+  
     Object.entries(output).forEach(([resource, amount]) => {
-      resources[resource as keyof Resources] += amount ?? 0;
+      resources[resource as keyof Resources] += (amount ?? 0) + bonus;  // D2: add the tool bonus
     });
 
   });

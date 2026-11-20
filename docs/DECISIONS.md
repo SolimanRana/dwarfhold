@@ -38,3 +38,36 @@ A dwarf on an expedition does not produce resources from their local job. They k
 **Reason for this decision:**
 
 A dwarf can only be in one place at a time. Keeping the assignment means the player doesn't have to assign the dwarf again after the expedition.
+
+## D2 - Compatible jobs for tools
+
+**Decision:**
+
+Tools only give a bonus for Woodcutting and Deep Mining. Farming gets no bonus.
+
+**Reason for this decision:**
+
+An axe or a pickaxe makes sense for wood and stone, but not for growing mushrooms. It also keeps food limited, so the food shortage rule from D1 still matters.
+
+**Effect:**
+
+- A dwarf with a tool produces one extra unit of their resource per day (Woodcutting 3 -> 4, Deep Mining 2 -> 3)
+- A dwarf with a tool who is farming, unassigned, hungry or on an expedition gets no bonus
+
+## D2 - Equipping tools
+
+**Decision:**
+
+Each dwarf has a flag that says whether they carry a tool. The tool count in the inventory only shows tools that are in storage and free to use.
+
+- Equipping a tool: inventory -1 = the dwarf now carries a tool
+- Returning a tool: inventory +1 = the dwarf no longer carries a tool
+- A dwarf can carry at most one tool and a tool can only be equipped when one is in storage
+
+**Reason for this decision:**
+
+There is only one kind of tool and tools have no durability, so we don't need to track individual tools. The inventory number directly shows how many tools are still available.
+
+**Trade-off:**
+
+Equipping and returning always change two things (inventory and dwarf). We do both in a single state update, so they can never get out of sync.

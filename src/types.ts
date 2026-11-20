@@ -11,7 +11,8 @@ export interface Dwarf {
      assignment: JobType; 
      status: DwarfStatus; 
      specialty?: Exclude<JobType, null> ;
-     hungry: boolean  // D1: true if dwarf got no food last evening
+     hungry: boolean;  // D1: true if dwarf got no food last evening
+     hasTool: boolean; // D2: true if dwarf has a tool
 }
 
 export interface ColonyState { 
