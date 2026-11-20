@@ -18,6 +18,7 @@ export function ColonyPage() {
 
   const dailyOutput = colony.dwarves.reduce<Record<ResourceKey, number>>(
     (total, dwarf) => {
+      if (dwarf.status === "expedition") return total; // D1: away dwarves don't produce, so the preview matches the simulation
       if (dwarf.assignment) {
         const output = production[dwarf.assignment];
         Object.entries(output).forEach(([resource, amount]) => {
