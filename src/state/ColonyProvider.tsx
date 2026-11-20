@@ -26,6 +26,7 @@ const initialState: ColonyState = {
       assignment: "mining",
       status: "working",
       specialty: "mining",
+      hungry: false,  // D1: no dwarf starts hungry
     },
     {
       id: "dwarf-2",
@@ -35,6 +36,7 @@ const initialState: ColonyState = {
       assignment: "woodcutting",
       status: "working",
       specialty: "woodcutting",
+      hungry: false,  // D1: no dwarf starts hungry
     },
     {
       id: "dwarf-3",
@@ -43,6 +45,7 @@ const initialState: ColonyState = {
       icon: "🧔🏽",
       assignment: null,
       status: "idle",
+      hungry: false,  // D1: no dwarf starts hungry
     },
   ],
 };

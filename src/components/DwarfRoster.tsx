@@ -71,11 +71,21 @@ export function DwarfRoster({ dwarves, onAssign }: Props) {
                 </select>
               </div>
 
-              <span className="status">{dwarf.status}</span>
+              <div className="badges">
+                <span className="status">{dwarf.status}</span>
+                {dwarf.hungry && <span className="status hungry">hungry</span>}  {/* D1: only shown when the dwarf got no food */}
+              </div>
             </article>
           );
         })}
       </div>
+      {dwarves.some((dwarf) => dwarf.hungry) && (
+        <p className="hunger-note">
+          {/* D1: explains the shortage consequence in the interface */}
+          !!! Hungry dwarves got no food last evening and don't work today. 
+          Farmers still work, assign more farmers to end the shortage !!!
+        </p>
+      )}
     </section>
   );
 }
