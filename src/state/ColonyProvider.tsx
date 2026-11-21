@@ -16,6 +16,7 @@ const initialState: ColonyState = {
     stone: 9,
     food: 18,
     tools: 1,
+    weapons: 0,
   },
   dwarves: [
     {
@@ -179,6 +180,43 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // D2: forge a weapon (stored as a colony resource)
+  function craftWeapon() {
+    if (colony.resources.wood < 2 || colony.resources.stone < 4) {  // D2: weapon costs 2 wood + 4 stone
+      setActivities((current) => [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: "A weapon needs 2 timber and 4 stone",
+          tone: "warning" as const,
+        },
+        ...current,
+      ]);
+      return;
+    }
+
+    setColony((current) => ({
+      ...current,
+      resources: {
+        ...current.resources,
+        wood: current.resources.wood - 2,
+        stone: current.resources.stone - 4,
+        weapons: current.resources.weapons + 1,  // D2: one weapon added to storage
+      },
+    }));
+    setActivities((current) =>
+      [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: "A new weapon joins the armory.",
+          tone: "good" as const,
+        },
+        ...current,
+      ].slice(0, 6),
+    );
+  }
+
   async function sendExpedition(dwarfId: string, destination: string) {
     const dwarf = colony.dwarves.find((item) => item.id === dwarfId);
     if (!dwarf) return;
@@ -262,6 +300,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     sendExpedition,
     equipTool,  // D2
     returnTool,  // D2
+    craftWeapon, // D2
   };
 
   return <ColonyContext value={value}>{children}</ColonyContext>;

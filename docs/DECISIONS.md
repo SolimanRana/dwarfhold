@@ -71,3 +71,17 @@ There is only one kind of tool and tools have no durability, so we don't need to
 **Trade-off:**
 
 Equipping and returning always change two things (inventory and dwarf). We do both in a single state update, so they can never get out of sync.
+
+## D2 - Weapon recipe
+
+**Decision:**
+
+A weapon costs 2 wood + 4 stone. Weapons are stored as a colony resource and are not equipped by individual dwarves.
+
+**Reason for this decision:**
+
+A tool costs 3 wood + 2 stone. Giving weapons a different cost that needs more stone makes the player choose between gathering wood or stone. It also makes a tool for the miner more useful.
+
+**Note:**
+
+How weapons are used when Stonehome is attacked is decided in D7.

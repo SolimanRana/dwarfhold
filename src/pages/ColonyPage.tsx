@@ -34,6 +34,7 @@ export function ColonyPage() {
       stone: 0,
       food: -colony.dwarves.length,
       tools: 0,
+      weapons: 0,
     },
   );
 
