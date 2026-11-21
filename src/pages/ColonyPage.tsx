@@ -12,6 +12,8 @@ export function ColonyPage() {
     expeditionPending,
     assignDwarf,
     sendExpedition,
+    equipTool,
+    returnTool,
   } = useColony();
   const [destination, setDestination] = useState("crystal-cave");
   const [expeditionDwarf, setExpeditionDwarf] = useState("dwarf-3");
@@ -32,12 +34,13 @@ export function ColonyPage() {
       stone: 0,
       food: -colony.dwarves.length,
       tools: 0,
+      weapons: 0,
     },
   );
 
   return (
     <div className="dashboard">
-      <DwarfRoster dwarves={colony.dwarves} onAssign={assignDwarf} />
+      <DwarfRoster dwarves={colony.dwarves} onAssign={assignDwarf} onEquipTool={equipTool} onReturnTool={returnTool} toolsInStorage={colony.resources.tools} />
 
       <section className="center-stack">
         <section className="panel production">

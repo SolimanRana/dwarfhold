@@ -7,3 +7,12 @@
 .badges{display:flex;flex-direction:column;gap:4px;align-self:start;align-items:flex-end}
 .status.hungry{color:#d47459;border-color:#d47459}
 .hunger-note{margin:0 14px 12px;padding:8px 10px;border:1px solid #d47459;color:#d47459;font:12px Barlow Condensed;line-height:1.4}
+
+/* D2: equip / return tool button */
+.tool-button{margin-top:6px;width:100%;background:transparent;color:#d9a34f;border:1px solid #6a5232;padding:4px;font:600 10px Barlow Condensed;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.tool-button:disabled{opacity:.4;cursor:default}
+.status.tool{color:#d9a34f;border-color:#d9a34f}
+/* D2: tool and weapon recipe stacked */
+.forge-recipes{display:flex;flex-direction:column;gap:15px}
+/* D2: fifth slot for weapons in the resource bar */
+.resource-bar{grid-template-columns:repeat(5,1fr)}

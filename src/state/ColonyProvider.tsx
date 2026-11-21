@@ -16,6 +16,7 @@ const initialState: ColonyState = {
     stone: 9,
     food: 18,
     tools: 1,
+    weapons: 0,
   },
   dwarves: [
     {
@@ -27,6 +28,7 @@ const initialState: ColonyState = {
       status: "working",
       specialty: "mining",
       hungry: false,  // D1: no dwarf starts hungry
+      hasTool: false, // D2: no dwarf starts with a tool
     },
     {
       id: "dwarf-2",
@@ -37,6 +39,7 @@ const initialState: ColonyState = {
       status: "working",
       specialty: "woodcutting",
       hungry: false,  // D1: no dwarf starts hungry
+      hasTool: false, // D2: no dwarf starts with a tool
     },
     {
       id: "dwarf-3",
@@ -46,6 +49,7 @@ const initialState: ColonyState = {
       assignment: null,
       status: "idle",
       hungry: false,  // D1: no dwarf starts hungry
+      hasTool: false, // D2: no dwarf starts with a tool
     },
   ],
 };
@@ -100,6 +104,46 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // D2: give a tool from storage to a dwarf
+  function equipTool(id: string) {
+    setColony((current) => {
+      const dwarf = current.dwarves.find((item) => item.id === id);
+
+      // D2: invalid attempt changes nothing
+      if(!dwarf || dwarf.hasTool || dwarf.status === "expedition" || current.resources.tools < 1) {
+        return current;
+      }
+
+      return {
+        ...current,
+        resources: { ...current.resources, tools: current.resources.tools - 1 }, // D2: one tool leaves storage
+        dwarves: current.dwarves.map((item) =>
+          item.id === id ? { ...item, hasTool: true } : item, // D2: ...and goes to this dwarf
+        ),
+      };
+    });
+  }
+
+  // D2: take a tool from dwarf and return it to storage
+  function returnTool(id: string) {
+    setColony((current) => {
+      const dwarf = current.dwarves.find((item) => item.id === id);
+
+      // D2: invalid attempt changes nothing
+      if(!dwarf || !dwarf.hasTool || dwarf.status === "expedition") {
+        return current;
+      }
+
+      return {
+        ...current,
+        resources: { ...current.resources, tools: current.resources.tools + 1 }, // D2: one tool is added to storage
+        dwarves: current.dwarves.map((item) =>
+          item.id === id ? { ...item, hasTool: false } : item, // D2: ...taken back from this dwarf
+        ),
+      };
+    });
+  }
+
   function craftTool() {
     if (colony.resources.wood < 3) {
       setActivities((current) => [
@@ -129,6 +173,43 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
           id: crypto.randomUUID(),
           day: colony.day,
           message: "A sturdy iron tool joins the stores.",
+          tone: "good" as const,
+        },
+        ...current,
+      ].slice(0, 6),
+    );
+  }
+
+  // D2: forge a weapon (stored as a colony resource)
+  function craftWeapon() {
+    if (colony.resources.wood < 2 || colony.resources.stone < 4) {  // D2: weapon costs 2 wood + 4 stone
+      setActivities((current) => [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: "A weapon needs 2 timber and 4 stone",
+          tone: "warning" as const,
+        },
+        ...current,
+      ]);
+      return;
+    }
+
+    setColony((current) => ({
+      ...current,
+      resources: {
+        ...current.resources,
+        wood: current.resources.wood - 2,
+        stone: current.resources.stone - 4,
+        weapons: current.resources.weapons + 1,  // D2: one weapon added to storage
+      },
+    }));
+    setActivities((current) =>
+      [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: "A new weapon joins the armory.",
           tone: "good" as const,
         },
         ...current,
@@ -217,6 +298,9 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     assignDwarf,
     craftTool,
     sendExpedition,
+    equipTool,  // D2
+    returnTool,  // D2
+    craftWeapon, // D2
   };
 
   return <ColonyContext value={value}>{children}</ColonyContext>;
