@@ -1,12 +1,41 @@
 import { Chronicle } from "../components/Chronicle";
 import { useColony } from "../state/ColonyContext";
+import { useState } from "react";
 
 export function ForgePage() {
-  const { activities, craftTool, craftWeapon } = useColony();
+  const { colony, activities, startForge } = useColony();
+  const [smithId, setSmithId] = useState("dwarf-3");
+
+  const forgeJob = colony.forge; // D3: current forge job or null
+  const currentSmith = forgeJob ? colony.dwarves.find((dwarf) => dwarf.id === forgeJob.dwarfId) : null; // D3: who is at the forge
 
   return (
     <div className="forge-layout">
       <div className="forge-recipes">
+        <section className="panel forge-picker"> {/* D3: choose who forges */}
+          <label>
+            Smith
+            <select
+              value={smithId}
+              onChange={(event) => setSmithId(event.target.value)}
+            >
+              {colony.dwarves.map((dwarf) => (
+                <option key={dwarf.id} value={dwarf.id}>
+                  {dwarf.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {forgeJob ? (
+            <p className="forge-status busy">
+              {currentSmith?.name} is forging a {forgeJob.item}. Ready on day {forgeJob.readyDay}
+            </p>
+          ) : (
+            <p className="forge-status">The forge is free!</p>
+          )}
+        </section>
+        
         <section className="panel forge">
           <div>
             <small>EMBER FORGE</small>
@@ -19,7 +48,9 @@ export function ForgePage() {
             <span>2 🪨</span>
             <i>→</i>
             <span>1 ⚒️</span>
-            <button onClick={craftTool}>Forge tool</button>
+            <i>·</i>
+            <span>1 day</span>
+            <button onClick={() => startForge(smithId, "tool")}>Forge tool</button> {/* D3: starts a timed forge job */}
           </div>
         </section>
 
@@ -36,7 +67,9 @@ export function ForgePage() {
             <span>4 🪨</span>
             <i>→</i>
             <span>1 🗡️</span>
-            <button onClick={craftWeapon}>Forge weapon</button>
+            <i>·</i>
+            <span>2 days</span>
+            <button onClick={() => startForge(smithId, "weapon")}>Forge weapon</button> {/* D3: starts a timed forge job */}
           </div>
         </section>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
-import { advanceDay, jobLabel } from "../simulation";
+import { advanceDay, forgeProblem, jobLabel, recipes } from "../simulation";
 import type {
   Activity,
   ColonyState,
@@ -52,6 +52,7 @@ const initialState: ColonyState = {
       hasTool: false, // D2: no dwarf starts with a tool
     },
   ],
+  forge: null  // D3: no forge job at the start
 };
 
 export function ColonyProvider({ children }: { children: ReactNode }) {
@@ -144,7 +145,8 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  function craftTool() {
+
+  /*function craftTool() {
     if (colony.resources.wood < 3) {
       setActivities((current) => [
         {
@@ -215,11 +217,74 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
         ...current,
       ].slice(0, 6),
     );
+  }*/
+
+  // D3: start forging an item with a chosen dwarf (takes time)
+  function startForge(dwarfId: string, item: "tool" | "weapon") {
+    const problem = forgeProblem(colony, dwarfId, item); // D3: check all rules first
+
+    if (problem) {
+      // D3: invalid attempt, only write a warning, change nothing else
+      setActivities((current) => [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: problem,
+          tone: "warning" as const,
+        },
+        ...current,
+      ].slice(0, 6));
+      return;
+    }
+
+    const recipe = recipes[item];  // D3: cost and duration for item
+
+    setColony((current) => {
+      if (forgeProblem(current, dwarfId, item)) return current; // D3: safety check on the latest state (double clicks)
+      
+      return {
+        ...current,
+        resources: { 
+          ...current.resources,
+          wood: current.resources.wood - recipe.wood,  // D3: materials are paid when forging starts
+          stone: current.resources.stone - recipe.stone,
+        },
+        dwarves: current.dwarves.map((d) =>
+          d.id === dwarfId ? { ...d, status: "crafting" as const } : d, // D3: dwarf is at forge
+        ),
+        forge: {dwarfId, item, readyDay: current.day + recipe.days },  // D3: who what and when it is ready
+      };
+    });
+
+    const smith = colony.dwarves.find((dwarf) => dwarf.id === dwarfId); // D3: for the name in the message
+    setActivities((current) => [
+      {
+        id: crypto.randomUUID(),
+        day: colony.day,
+        message: `${smith?.name ?? "A dwarf"} started forging a ${item}. Ready on day ${colony.day + recipe.days}.`, // D3: shows who and when
+        tone: "good" as const,
+      },
+      ...current,
+    ].slice(0, 6));
   }
 
   async function sendExpedition(dwarfId: string, destination: string) {
     const dwarf = colony.dwarves.find((item) => item.id === dwarfId);
     if (!dwarf) return;
+
+    // D3: a dwarf at the forge can't go on an expedition
+    if (dwarf.status === "crafting") {
+      setActivities((current) => [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: `${dwarf.name} is busy at the forge.`,
+          tone: "warning" as const,
+        },
+        ...current,
+      ].slice(0, 6));
+      return;
+    }
 
     setExpeditionPending(true);
     setColony((current) => ({
@@ -296,11 +361,12 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     expeditionPending,
     togglePaused: () => setPaused((value) => !value),
     assignDwarf,
-    craftTool,
+    //craftTool,
     sendExpedition,
     equipTool,  // D2
     returnTool,  // D2
-    craftWeapon, // D2
+    //craftWeapon, // D2
+    startForge, // D3: replaces craftTool & craftWeapon
   };
 
   return <ColonyContext value={value}>{children}</ColonyContext>;

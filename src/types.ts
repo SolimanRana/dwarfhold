@@ -1,24 +1,25 @@
 export type ResourceKey = "wood" | "stone" | "food" | "tools" | "weapons";
 export type JobType = "woodcutting" | "mining" | "farming" | null;
-export type DwarfStatus = "idle" | "working" | "expedition";
+export type DwarfStatus = "idle" | "working" | "expedition" | "crafting";
 export interface Resources { wood: number; stone: number; food: number; tools: number; weapons: number }
 
 export interface Dwarf { 
     id: string;
-     name: string; 
-     title: string; 
-     icon: string; 
-     assignment: JobType; 
-     status: DwarfStatus; 
-     specialty?: Exclude<JobType, null> ;
-     hungry: boolean;  // D1: true if dwarf got no food last evening
-     hasTool: boolean; // D2: true if dwarf has a tool
+    name: string; 
+    title: string; 
+    icon: string; 
+    assignment: JobType; 
+    status: DwarfStatus; 
+    specialty?: Exclude<JobType, null> ;
+    hungry: boolean;  // D1: true if dwarf got no food last evening
+    hasTool: boolean; // D2: true if dwarf has a tool
 }
 
 export interface ColonyState { 
     day: number; 
     resources: Resources; 
-    dwarves: Dwarf[] 
+    dwarves: Dwarf[];
+    forge: ForgeJob | null;  // D3: current forge job, null if forge is free
 }
 
 export interface ExpeditionResult { 
@@ -33,4 +34,11 @@ export interface Activity {
     day: number; 
     message: string; 
     tone?: "good" | "warning" 
+}
+
+// D3: one job at the forge (who, what and when is it ready)
+export interface ForgeJob {
+    dwarfId: string;
+    item: "tool" | "weapon";
+    readyDay: number;
 }

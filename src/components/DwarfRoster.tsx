@@ -35,6 +35,7 @@ export function DwarfRoster({ dwarves, onAssign, onEquipTool, onReturnTool, tool
       <div className="dwarf-list">
         {dwarves.map((dwarf) => {
           const isAway = dwarf.status === "expedition";
+          const isBusy = isAway || dwarf.status === "crafting"; // D3: away or at the forge, so the job can't be changed
           const specialty = dwarf.specialty
             ? `Skilled in ${jobLabel(dwarf.specialty)}`
             : "Generalist";
@@ -57,7 +58,7 @@ export function DwarfRoster({ dwarves, onAssign, onEquipTool, onReturnTool, tool
 
                 <select
                   value={dwarf.assignment ?? ""}
-                  disabled={isAway}
+                  disabled={isBusy}
                   onChange={(event) =>
                     onAssign(
                       dwarf.id,
