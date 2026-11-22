@@ -10,7 +10,7 @@ Two things change the colony at the same time: the daily timer and the expeditio
 
 **Decisions and trade-offs:**
 
-- All rules are pure functions that take the whole colony state and return a new one (`advanceDay`, `departExpedition`, `finishExpedition`, `resolveAttack`)
+- All rules are pure functions that take the whole colony state and return a new one (`advanceDay`, `giveTool`, `takeBackTool`, `beginForge`, `departExpedition`, `finishExpedition`, `resolveAttack`))
 - The provider always uses `setColony((current) => ...)`, so every change is applied to the latest state, not to an old copy
 - Rewards, the scout's return, the newcomer and the dragon attack are applied in one single update (see D6 and D7)
 - Every expedition has a trip id, so a result can only be applied once and the result of a trip that is not out is ignored. A `useRef` guard ignores a quick second click
@@ -60,8 +60,8 @@ Requirements were added during the exam by two people in the same files (D4 to D
 
 - `npm test` (all unit tests pass) and `npm run build` (no type errors)
 - A rule change touches one place: for example the dragon threshold is one constant, a new species is one entry in `speciesRules` plus the save check
-- Searching `D7:` (Cmd + Shift + F) finds every place that belongs to a requirement
+- - Searching `D7:` (Ctrl/Cmd + Shift + F) finds every place that belongs to a requirement
 
 ## Known limits
 
-D1 to D3 do not have their own unit tests yet, and the screens and the provider have no automated tests, only the manual checks listed above.
+Every requirement (D1 to D7) has its own unit tests. The screens and the provider have no automated tests, only the manual checks listed above.
