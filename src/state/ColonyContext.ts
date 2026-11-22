@@ -8,11 +8,12 @@ export interface ColonyContextValue {
   expeditionPending: boolean;
   togglePaused: () => void;
   assignDwarf: (id: string, assignment: JobType) => void;
-  craftTool: () => void;
+  //craftTool: () => void;
   sendExpedition: (dwarfId: string, destination: string) => Promise<void>;
   equipTool: (id: string) => void;
   returnTool: (id: string) => void;
-  craftWeapon: () => void;
+  //craftWeapon: () => void;
+  startForge: (dwarfId: string, item: "tool" | "weapon") => void;
 }
 
 export const ColonyContext = createContext<ColonyContextValue | null>(null);

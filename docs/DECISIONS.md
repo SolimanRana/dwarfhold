@@ -85,3 +85,31 @@ A tool costs 3 wood + 2 stone. Giving weapons a different cost that needs more s
 **Note:**
 
 How weapons are used when Stonehome is attacked is decided in D7.
+
+## D3 - Crafting as colony work
+
+**Decision:**
+
+Forging takes time and needs a dwarf. A tool takes 1 day, a weapon takes 2 days.
+
+**Rules:**
+
+1. Time is measured in simulation days, so crafting also stops when the game is paused
+2. Only one item can be forged at a time, because Stonehome has one forge
+3. A dwarf can start forging if they are not on an expedition, not hungry and the forge is free
+4. Materials are paid when forging starts, so the same wood or stone can't be used twice
+5. While forging, the dwarf keeps their job but doesn't produce anything. After the item is done they continue their job
+6. Once forging has started it always finishes on time, even if the dwarf gets hungry in the meantime
+7. While forging, the dwarf can't change their job and can't go on an expedition (one activity at a time, see D1)
+
+**Invalid attempts:**
+
+If there are not enough materials, the dwarf is not eligible or the forge is busy, nothing changes. No materials are used and no dwarf is changed.
+
+**Reason for this decision:**
+
+Counting in days fits the daily simulation. Paying at the start and allowing only one forge job at a time keeps the inventory consistent and makes the interface simple: it shows one dwarf and the day the item will be ready.
+
+**Trade-off:**
+
+The player can't forge several items in parallel, even if several dwarves are free.

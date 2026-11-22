@@ -16,3 +16,10 @@
 .forge-recipes{display:flex;flex-direction:column;gap:15px}
 /* D2: fifth slot for weapons in the resource bar */
 .resource-bar{grid-template-columns:repeat(5,1fr)}
+
+/* D3: smith picker and forge status */
+.forge-picker{padding:12px 17px}
+.forge-picker label{display:block;font:600 10px Barlow Condensed;letter-spacing:.1em;color:#9e8566}
+.forge-picker select{display:block;width:100%;margin-top:5px;background:#100e0b;color:#d8c8ae;border:1px solid #4d3f30;padding:5px}
+.forge-status{margin:10px 0 0;font:12px Barlow Condensed;color:#927b60}
+.forge-status.busy{color:#e2a84f}
