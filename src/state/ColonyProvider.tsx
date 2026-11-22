@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
 import { browserStorage, loadGame, saveGame } from "../persistence";
-import { advanceDay, attackMessage, canDoJob, departExpedition, expeditionProblem, finishExpedition, forgeProblem, jobLabel, newcomer, newcomerJoins, recipes, rewardsText, speciesRules } from "../simulation";
+import { advanceDay, attackMessage, canDoJob, departExpedition, expeditionProblem, finishExpedition, forgeProblem, jobLabel, newcomer, newcomerJoins, recipes, rewardsText, speciesRules, giveTool, takeBackTool, beginForge } from "../simulation";
 import type {
   Activity,
   ColonyState,
@@ -186,7 +186,9 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setColony((current) => {
+    setColony((current) => giveTool(current, id));  // D2: the rule lives in simulation.ts
+
+    /*setColony((current) => {
       const dwarf = current.dwarves.find((item) => item.id === id);
 
       // D2: invalid attempt changes nothing (D6: also when the species cannot use tools)
@@ -201,12 +203,13 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
           item.id === id ? { ...item, hasTool: true } : item, // D2: ...and goes to this dwarf
         ),
       };
-    });
+    });*/
   }
 
   // D2: take a tool from dwarf and return it to storage
   function returnTool(id: string) {
-    setColony((current) => {
+    setColony((current) => takeBackTool(current, id));  // D2: the rule lives in simulation.ts
+    /*setColony((current) => {
       const dwarf = current.dwarves.find((item) => item.id === id);
 
       // D2: invalid attempt changes nothing
@@ -221,7 +224,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
           item.id === id ? { ...item, hasTool: false } : item, // D2: ...taken back from this dwarf
         ),
       };
-    });
+    });*/
   }
 
 
@@ -318,7 +321,9 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
 
     const recipe = recipes[item];  // D3: cost and duration for item
 
-    setColony((current) => {
+    setColony((current) => beginForge(current, dwarfId, item));  // D3: the rule lives in simulation.ts
+    
+    /*setColony((current) => {
       if (forgeProblem(current, dwarfId, item)) return current; // D3: safety check on the latest state (double clicks)
       
       return {
@@ -333,7 +338,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
         ),
         forge: {dwarfId, item, readyDay: current.day + recipe.days },  // D3: who what and when it is ready
       };
-    });
+    });*/
 
     const smith = colony.dwarves.find((dwarf) => dwarf.id === dwarfId); // D3: for the name in the message
     setActivities((current) => [
