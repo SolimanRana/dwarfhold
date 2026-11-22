@@ -14,6 +14,7 @@ Only dwarves who ate the evening before can work
 2. Non-Farmers eat first in a fixed order (top to bottom)
 3. Farmers eat last, because they work even when they are hungry. That way the food goes to the dwarves who would otherwise stop working
 4. A dwarf who gets no food is marked as "hungry" for the next day
+5. A farmer always counts as a farmer for the eating order, even while they are on an expedition or at the forge. This keeps the rule simple, but such a farmer can become hungry although they are not working at the moment
 
 **Effect of being hungry:**
 

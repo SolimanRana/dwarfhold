@@ -25,6 +25,53 @@ describe("colony simulation", () => {
   });
 });
 
+describe("food and hunger (D1)", () => {
+  it("leaves nobody hungry when there is enough food", () => {
+    const after = advanceDay(makeColony([makeDwarf(), makeDwarf({ id: "d2" })]));  // D1: 5 food for 2 dwarves
+
+    expect(after.dwarves.map((dwarf) => dwarf.hungry)).toEqual([false, false]);
+    expect(after.resources.food).toBe(3);  // D1: each dwarf ate one ration
+  });
+
+  it("feeds the dwarves in roster order when there is not enough food", () => {
+    const state = { ...makeColony([makeDwarf(), makeDwarf({ id: "d2" }), makeDwarf({ id: "d3" })]), resources: { wood: 0, stone: 0, food: 2, tools: 0, weapons: 0 } };
+    const after = advanceDay(state);
+
+    expect(after.dwarves.map((dwarf) => dwarf.hungry)).toEqual([false, false, true]);  // D1: the last one in the roster gets nothing
+    expect(after.resources.food).toBe(0);
+  });
+
+  it("lets farmers eat last, even when they are first in the roster", () => {
+    // D1: the farmer harvests 4 food, which is enough for the 4 miners but not for the farmer
+    const state = { ...makeColony([makeDwarf({ assignment: "farming" }), makeDwarf({ id: "d2" }), makeDwarf({ id: "d3" }), makeDwarf({ id: "d4" }), makeDwarf({ id: "d5" })]), resources: { wood: 0, stone: 0, food: 0, tools: 0, weapons: 0 } };
+    const after = advanceDay(state);
+
+    expect(after.dwarves.map((dwarf) => dwarf.hungry)).toEqual([true, false, false, false, false]);
+  });
+
+  it("keeps a dwarf hungry for one day only", () => {
+    const after = advanceDay(makeColony([makeDwarf({ hungry: true })]));  // D1: hungry yesterday, but there is food today
+    expect(after.dwarves[0].hungry).toBe(false);
+  });
+
+  it("never lets the food go below 0", () => {
+    const state = { ...makeColony([makeDwarf(), makeDwarf({ id: "d2" }), makeDwarf({ id: "d3" })]), resources: { wood: 0, stone: 0, food: 0, tools: 0, weapons: 0 } };
+    const after = advanceDay(state);
+
+    expect(after.resources.food).toBe(0);
+    expect(after.dwarves.every((dwarf) => dwarf.hungry)).toBe(true);  // D1: nobody ate
+  });
+
+  it("feeds a dwarf on an expedition too", () => {
+    const after = advanceDay(makeColony([makeDwarf({ status: "expedition" }), makeDwarf({ id: "d2" })]));
+
+    expect(after.resources.food).toBe(3);  // D1: both dwarves ate, also the one who is away
+    expect(after.dwarves[0].hungry).toBe(false);
+  });
+});
+
+
+
 describe("expeditions (D4)", () => {
   it("allows an available dwarf to go", () => {
     expect(expeditionProblem(makeColony([makeDwarf()]), "d1")).toBeNull();
