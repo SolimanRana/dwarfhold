@@ -144,3 +144,29 @@ Recording the expedition in the colony state, and finishing it in one update, me
 **Trade-off:**
 
 One expedition at a time is simpler and safer, but the player can't send several dwarves at once. A tool is also unavailable to others while its owner is away.
+
+## D5 - Save and restore
+
+**Decision (what is saved):**
+
+The colony is saved in the browser (`localStorage`) after every change: the day, the resources, all dwarves (job, status, hunger, tool), the forge job, the expedition record and the chronicle. The pause button is not saved, so after a refresh the hold always wakes up and runs. Days do not pass while the page is closed.
+
+**Decision (forge job interrupted by a refresh):**
+
+The forge job is restored exactly as it was and carries on. Forging is measured in game days, not in real seconds, so it finishes after the same number of days. The Forge page shows the smith and the day the item is ready, and the chronicle says that the colony was restored.
+
+**Decision (expedition interrupted by a refresh):**
+
+The expedition server does not remember trips, so the result is lost when the page is refreshed. The expedition is therefore cancelled: the dwarf comes home straight away with no rewards, keeps their job and their tool, and the chronicle says that the expedition was interrupted by the refresh.
+
+**Decision (corrupt or incompatible data):**
+
+The save contains a version number. When the game starts, the saved data is parsed and checked (version, numbers, known statuses and jobs, and that the forge and expedition refer to real dwarves). If anything is wrong, the whole save is ignored, a new colony starts and the chronicle says that the saved game could not be read. The game never crashes because of a bad save. If the browser does not allow saving, the game simply runs without saving.
+
+**Reason for this decision:**
+
+Counting forge time in game days means the forge needs no special handling after a refresh. Cancelling an expedition is safer than sending the request again, because we could not know whether the first request had already finished, and the player always sees what happened. Checking the whole save before using it, and starting fresh if it is wrong, is simple and predictable.
+
+**Trade-off:**
+
+An interrupted expedition is lost, and one wrong value costs the whole save instead of repairing it. When a later requirement changes the shape of the colony (for example a new species), the version number must be raised, so old saves are discarded safely instead of breaking the game.

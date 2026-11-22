@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
+import { browserStorage, loadGame, saveGame } from "../persistence";
 import { advanceDay, departExpedition, expeditionProblem, finishExpedition, forgeProblem, jobLabel, recipes } from "../simulation";
 import type {
   Activity,
@@ -55,19 +56,28 @@ const initialState: ColonyState = {
   expedition: null,  // D4: nobody is away at the start
 };
 
+const welcomeActivities: Activity[] = [
+  {
+    id: "welcome",
+    day: 12,
+    message: "The forge fires are lit. Stonehome wakes.",
+  },
+];
+
 export function ColonyProvider({ children }: { children: ReactNode }) {
-  const [colony, setColony] = useState(initialState);
+  // D5: on start, load the saved game (or a new colony if there is none or it is broken)
+  const [loaded] = useState(() => loadGame(browserStorage(), { colony: initialState, activities: welcomeActivities }));
+  const [colony, setColony] = useState(loaded.colony);
   const [paused, setPaused] = useState(false);
-  const [activities, setActivities] = useState<Activity[]>([
-    {
-      id: "welcome",
-      day: 12,
-      message: "The forge fires are lit. Stonehome wakes.",
-    },
-  ]);
+  const [activities, setActivities] = useState<Activity[]>(loaded.activities);
 
   const expeditionPending = colony.expedition !== null;  // D4: derived from the colony state, so it can't get out of sync
   const sendingRef = useRef(false);  // D4: remembers at once that a send is in progress, so a quick double click is ignored
+
+  // D5: save the game after every change of the colony or the chronicle
+  useEffect(() => {
+    saveGame(browserStorage(), colony, activities);
+  }, [colony, activities]);
 
   useEffect(() => {
     if (paused) return;
