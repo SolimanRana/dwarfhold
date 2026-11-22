@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
 import { browserStorage, loadGame, saveGame } from "../persistence";
-import { advanceDay, canDoJob, departExpedition, expeditionProblem, finishExpedition, forgeProblem, jobLabel, newcomer, newcomerJoins, recipes, speciesRules } from "../simulation";
+import { advanceDay, attackMessage, canDoJob, departExpedition, expeditionProblem, finishExpedition, forgeProblem, jobLabel, newcomer, newcomerJoins, recipes, rewardsText, speciesRules } from "../simulation";
 import type {
   Activity,
   ColonyState,
@@ -57,6 +57,7 @@ const initialState: ColonyState = {
   ],
   forge: null,  // D3: no forge job at the start
   expedition: null,  // D4: nobody is away at the start
+  lastAttack: null,  // D7: no dragon attack yet
 };
 
 const welcomeActivities: Activity[] = [
@@ -76,11 +77,29 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
 
   const expeditionPending = colony.expedition !== null;  // D4: derived from the colony state, so it can't get out of sync
   const sendingRef = useRef(false);  // D4: remembers at once that a send is in progress, so a quick double click is ignored
+  const announcedAttackRef = useRef(loaded.colony.lastAttack?.id ?? null);  // D7: the attack that is already in the chronicle (a restored save must not announce its old attack again)
 
   // D5: save the game after every change of the colony or the chronicle
   useEffect(() => {
     saveGame(browserStorage(), colony, activities);
   }, [colony, activities]);
+
+  // D7: when a new attack result appears in the colony, write it to the chronicle exactly once
+  useEffect(() => {
+    const report = colony.lastAttack;
+    if (!report || report.id === announcedAttackRef.current) return;
+
+    announcedAttackRef.current = report.id;
+    setActivities((current) => [
+      {
+        id: `attack-${report.id}`,
+        day: report.day,
+        message: `🐉 ${attackMessage(report)}`,
+        tone: report.defended ? ("good" as const) : ("warning" as const),
+      },
+      ...current,
+    ].slice(0, 6));
+  }, [colony.lastAttack]);
 
   useEffect(() => {
     if (paused) return;
@@ -365,7 +384,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     try {
       const result = await beginExpedition(dwarf.id, destination);
 
-      setColony((current) => finishExpedition(current, tripId, result.rewards));  // D4: rewards are added and the dwarf comes home in one update (D6: and the newcomer joins)
+      setColony((current) => finishExpedition(current, tripId, result.rewards));  // D4: rewards are added and the dwarf comes home in one update (D6: and the newcomer joins, D7: and the dragon attacks)
       setActivities((current) =>
         [
           // D6: announce the newcomer (newest entry goes on top, so it is listed first)
@@ -380,14 +399,14 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
           {
             id: result.expeditionId,
             day: colony.day,
-            message: result.message,
+            message: `${result.message} (${rewardsText(result.rewards)})`,  // D7: shows exactly what the scout brought home
             tone: "good" as const,
           },
           ...current,
         ].slice(0, 6),
       );
     } catch (error) {
-      setColony((current) => finishExpedition(current, tripId, null));  // D4: no rewards, but the dwarf still comes home (D6: no newcomer either)
+      setColony((current) => finishExpedition(current, tripId, null));  // D4: no rewards, but the dwarf still comes home (D6: no newcomer either, D7: and no attack)
       setActivities((current) =>
         [
           {

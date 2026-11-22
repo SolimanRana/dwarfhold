@@ -204,3 +204,28 @@ One field (`species`) and one small table of species rules keep the differences 
 **Trade-off:**
 
 Only one new species and one fixed arrival make the rules simple to explain and test, but there is nothing more to discover after Lumi has joined. Raising the save version means players lose an old save once.
+
+## D7 - The dragon of the Dragon's Lair
+
+**Decision:**
+
+A new expedition destination, the Dragon's Lair, is added. A successful expedition there brings home rewards (10 stone, 6 wood) and a dragon that follows the scout to Stonehome and attacks the colony.
+
+**Rules:**
+
+1. The attack happens only after a successful expedition to the Dragon's Lair. A failed request, or an expedition to any other destination, never triggers an attack
+2. If Stonehome has at least 2 weapons, the colony defends itself and the dragon is driven off
+3. A successful defense uses up the weapons: the fight costs 2 weapons. If the colony owns more than 2, the extra weapons stay
+4. If Stonehome has fewer than 2 weapons, the dragon takes half (rounded down) of the stored wood and half (rounded down) of the stored stone. The attack happens after the scout's rewards are stored, so they count too. Food, tools and weapons are never taken
+5. The rewards, the return of the scout and the attack are applied in one single update, so the stored resources are never inconsistent
+6. The result (defended or looted, with the exact numbers) is shown in a panel on the Colony page and written to the chronicle. It is saved with the game
+7. The Defense panel is hidden until the first attack, because the dragon only enters the story when a scout steals from its lair. Before that, the rules are shown as a rumour when the player selects the Dragon's Lair as the destination
+8. The rewards of the Dragon's Lair are fixed (10 stone, 6 wood) and are always listed in the chronicle together with the story message, like for every other expedition
+
+**Reason for this decision:**
+
+The story explains why only a successful trip causes an attack: the scout steals from the dragon's hoard, so the dragon follows. A dragon obsessed with wood and stone only takes those two resources, which makes the loss easy to predict and connects the weapons from D2 to the risk of the expedition. Taking half is deterministic (the same stock always gives the same loss) and fair, because the loss grows with how much the player hoards. The threshold of 2 weapons means about 4 days of forging, so the player has to prepare. Using up the weapons makes every defense cost something: the player has to forge two new weapons (4 wood and 8 stone, about 4 days) before the next trip to the lair, so preparation never ends.
+
+**Trade-off:**
+
+Because the fight uses up weapons, every Dragon's Lair trip costs the player 2 weapons (4 wood and 8 stone, about 4 forge days) to stay safe, so repeated trips become expensive. We accepted this so that weapons stay valuable and defending is a real choice. Also, only the latest attack result is stored. Older attacks are only visible in the chronicle. A player who never reads the rumour at the Dragon's Lair will not know that weapons matter before the first attack.
