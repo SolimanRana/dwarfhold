@@ -20,6 +20,7 @@ export interface ColonyState {
     resources: Resources; 
     dwarves: Dwarf[];
     forge: ForgeJob | null;  // D3: current forge job, null if forge is free
+    expedition: ExpeditionTrip | null;  // D4: the expedition that is travelling right now, null if nobody is away
 }
 
 export interface ExpeditionResult { 
@@ -41,4 +42,11 @@ export interface ForgeJob {
     dwarfId: string;
     item: "tool" | "weapon";
     readyDay: number;
+}
+
+// D4: one expedition that is travelling (which trip, who and where to)
+export interface ExpeditionTrip {
+    id: string;
+    dwarfId: string;
+    destination: string;
 }
