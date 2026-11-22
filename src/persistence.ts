@@ -1,8 +1,9 @@
-import type { Activity, ColonyState } from "./types";
+import type { Activity, ColonyState, Dwarf } from "./types";
+import { speciesRules } from "./simulation";
 
 // D5: where and how the game is saved in the browser
 export const SAVE_KEY = "dwarfhold-save";
-export const SAVE_VERSION = 1;  // D5: raise this number whenever the shape of ColonyState changes, so old saves are rejected safely
+export const SAVE_VERSION = 2;  // D5: raise this number whenever the shape of ColonyState changes, so old saves are rejected safely. D6: 2 because every character now has a species
 
 // D5: the only two storage functions we need (a plain object with these works in tests too)
 export type StorageLike = Pick<Storage, "getItem" | "setItem">;
@@ -27,6 +28,7 @@ const isCount = (value: unknown): value is number =>
 const isText = (value: unknown): value is string => typeof value === "string";
 const isStatus = (value: unknown) => ["idle", "working", "expedition", "crafting"].includes(value as string);
 const isJob = (value: unknown) => value === null || ["woodcutting", "mining", "farming"].includes(value as string);
+const isSpecies = (value: unknown) => ["dwarf", "fairy"].includes(value as string);  // D6: only known species are accepted
 
 function isDwarf(value: unknown): boolean {
   if (!isObject(value)) return false;
@@ -34,6 +36,7 @@ function isDwarf(value: unknown): boolean {
     isText(value.id) && isText(value.name) && isText(value.title) && isText(value.icon) &&
     isJob(value.assignment) && isStatus(value.status) &&
     typeof value.hungry === "boolean" && typeof value.hasTool === "boolean" &&
+    isSpecies(value.species) &&  // D6: every character must have a valid species
     (value.specialty === undefined || (value.specialty !== null && isJob(value.specialty)))
   );
 }
@@ -57,8 +60,15 @@ function isColony(value: unknown): value is ColonyState {
   }
 
   if (!Array.isArray(value.dwarves) || value.dwarves.length === 0 || !value.dwarves.every(isDwarf)) return false;
-  const dwarves = value.dwarves as { id: string; status: string }[];
+  const dwarves = value.dwarves as Dwarf[];
   if (new Set(dwarves.map((dwarf) => dwarf.id)).size !== dwarves.length) return false;  // D5: every dwarf id must be unique
+
+  // D6: a character must obey the rules of their species (only allowed jobs, no tool for species that cannot use one)
+  for (const dwarf of dwarves) {
+    const rules = speciesRules[dwarf.species];
+    if (dwarf.assignment !== null && !rules.jobs.includes(dwarf.assignment)) return false;
+    if (dwarf.hasTool && !rules.canUseTools) return false;
+  }
 
   // D5: the forge job must belong to a real dwarf, and exactly that dwarf must be marked as crafting
   const forge = value.forge;

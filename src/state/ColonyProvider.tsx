@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
 import { browserStorage, loadGame, saveGame } from "../persistence";
-import { advanceDay, departExpedition, expeditionProblem, finishExpedition, forgeProblem, jobLabel, recipes } from "../simulation";
+import { advanceDay, canDoJob, departExpedition, expeditionProblem, finishExpedition, forgeProblem, jobLabel, newcomer, newcomerJoins, recipes, speciesRules } from "../simulation";
 import type {
   Activity,
   ColonyState,
@@ -29,6 +29,7 @@ const initialState: ColonyState = {
       specialty: "mining",
       hungry: false,  // D1: no dwarf starts hungry
       hasTool: false, // D2: no dwarf starts with a tool
+      species: "dwarf", // D6: the three starting characters are dwarves
     },
     {
       id: "dwarf-2",
@@ -40,6 +41,7 @@ const initialState: ColonyState = {
       specialty: "woodcutting",
       hungry: false,  // D1: no dwarf starts hungry
       hasTool: false, // D2: no dwarf starts with a tool
+      species: "dwarf", // D6
     },
     {
       id: "dwarf-3",
@@ -50,6 +52,7 @@ const initialState: ColonyState = {
       status: "idle",
       hungry: false,  // D1: no dwarf starts hungry
       hasTool: false, // D2: no dwarf starts with a tool
+      species: "dwarf", // D6
     },
   ],
   forge: null,  // D3: no forge job at the start
@@ -107,10 +110,24 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // D6: a character can only take jobs that their species can do
+    if (!canDoJob(dwarf, assignment)) {
+      setActivities((current) => [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: `${dwarf.name} is a ${speciesRules[dwarf.species].label.toLowerCase()} and cannot do ${jobLabel(assignment)}.`,
+          tone: "warning" as const,
+        },
+        ...current,
+      ].slice(0, 6));
+      return;
+    }
+
     setColony((current) => ({
       ...current,
       dwarves: current.dwarves.map((item) =>
-        item.id === id && item.status !== "expedition" && item.status !== "crafting"  // D4: safety check on the latest state
+        item.id === id && item.status !== "expedition" && item.status !== "crafting" && canDoJob(item, assignment)  // D4 & D6: safety check on the latest state
           ? {
               ...item,
               assignment,
@@ -134,11 +151,27 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
 
   // D2: give a tool from storage to a dwarf
   function equipTool(id: string) {
+    const target = colony.dwarves.find((item) => item.id === id);
+
+    // D6: species that cannot use tools get a clear warning instead of a silent nothing
+    if (target && !speciesRules[target.species].canUseTools) {
+      setActivities((current) => [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: `${target.name} cannot use tools.`,
+          tone: "warning" as const,
+        },
+        ...current,
+      ].slice(0, 6));
+      return;
+    }
+
     setColony((current) => {
       const dwarf = current.dwarves.find((item) => item.id === id);
 
-      // D2: invalid attempt changes nothing
-      if(!dwarf || dwarf.hasTool || dwarf.status === "expedition" || current.resources.tools < 1) {
+      // D2: invalid attempt changes nothing (D6: also when the species cannot use tools)
+      if(!dwarf || dwarf.hasTool || dwarf.status === "expedition" || current.resources.tools < 1 || !speciesRules[dwarf.species].canUseTools) {
         return current;
       }
 
@@ -248,7 +281,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
 
   // D3: start forging an item with a chosen dwarf (takes time)
   function startForge(dwarfId: string, item: "tool" | "weapon") {
-    const problem = forgeProblem(colony, dwarfId, item); // D3: check all rules first
+    const problem = forgeProblem(colony, dwarfId, item); // D3: check all rules first (D6: includes the species limit)
 
     if (problem) {
       // D3: invalid attempt, only write a warning, change nothing else
@@ -317,6 +350,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
 
     sendingRef.current = true;  // D4: from now on repeated clicks are ignored
     const tripId = crypto.randomUUID();  // D4: identifies this one trip, so its result can only be applied once
+    const bringsNewcomer = newcomerJoins(colony, destination);  // D6: decided before leaving, with the same rule that finishExpedition uses (only one trip is out at a time)
 
     setColony((current) => departExpedition(current, tripId, dwarf.id, destination));  // D4: dwarf leaves and the trip is recorded together
     setActivities((current) => [
@@ -331,9 +365,18 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     try {
       const result = await beginExpedition(dwarf.id, destination);
 
-      setColony((current) => finishExpedition(current, tripId, result.rewards));  // D4: rewards are added and the dwarf comes home in one update
+      setColony((current) => finishExpedition(current, tripId, result.rewards));  // D4: rewards are added and the dwarf comes home in one update (D6: and the newcomer joins)
       setActivities((current) =>
         [
+          // D6: announce the newcomer (newest entry goes on top, so it is listed first)
+          ...(bringsNewcomer
+            ? [{
+                id: crypto.randomUUID(),
+                day: colony.day,
+                message: `${newcomer.name}, a cave fairy, followed the expedition home and joins Stonehome!`,
+                tone: "good" as const,
+              }]
+            : []),
           {
             id: result.expeditionId,
             day: colony.day,
@@ -344,7 +387,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
         ].slice(0, 6),
       );
     } catch (error) {
-      setColony((current) => finishExpedition(current, tripId, null));  // D4: no rewards, but the dwarf still comes home
+      setColony((current) => finishExpedition(current, tripId, null));  // D4: no rewards, but the dwarf still comes home (D6: no newcomer either)
       setActivities((current) =>
         [
           {

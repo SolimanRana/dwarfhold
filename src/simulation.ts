@@ -1,8 +1,74 @@
-import type { ColonyState, JobType, ResourceKey, Resources } from "./types";
+import type { ColonyState, Dwarf, JobType, ResourceKey, Resources, Species } from "./types";
 
 export const production: Record<Exclude<JobType, null>, Partial<Resources>> = {
   woodcutting: { wood: 3 }, mining: { stone: 2 }, farming: { food: 4 },
 };
+
+// D6: what each species can and cannot do, all in one place
+export const speciesRules: Record<Species, {
+  label: string;
+  jobs: Exclude<JobType, null>[];  // jobs this species can do
+  production: Partial<Record<Exclude<JobType, null>, Partial<Resources>>>;  // daily output per job
+  forge: ("tool" | "weapon")[];  // what this species can forge
+  canUseTools: boolean;  // can this species be given a tool?
+}> = {
+  dwarf: {
+    label: "Dwarf",
+    jobs: ["woodcutting", "mining", "farming"],
+    production,
+    forge: ["tool", "weapon"],
+    canUseTools: true,
+  },
+  fairy: {
+    label: "Cave fairy",
+    jobs: ["farming"],  // D6: fairies can only farm...
+    production: { farming: { food: 6 } },  // ...but they farm 6 rations instead of 4
+    forge: ["tool"],  // D6: fairies can forge tools but not weapons
+    canUseTools: false,  // D6: the tool bonus only helps woodcutting and mining
+  },
+};
+
+// D6: the one newcomer, who joins after the first successful expedition to NEWCOMER_DESTINATION
+export const NEWCOMER_DESTINATION = "crystal-cave";
+export const newcomer: Dwarf = {
+  id: "fairy-1",
+  name: "Lumi Glimmerwing",
+  title: "Mushroom Whisperer",
+  icon: "🧚",
+  assignment: null,
+  status: "idle",
+  hungry: false,
+  hasTool: false,
+  species: "fairy",
+};
+
+// D6: true if a successful expedition to this destination brings the newcomer (only once)
+export function newcomerJoins(state: ColonyState, destination: string): boolean {
+  return destination === NEWCOMER_DESTINATION && !state.dwarves.some((dwarf) => dwarf.species === "fairy");
+}
+
+// D6: can this character do this job?
+export function canDoJob(dwarf: Dwarf, job: JobType): boolean {
+  return job === null || speciesRules[dwarf.species].jobs.includes(job);
+}
+
+// D6: what one character produces per day right now (one place for the simulation and the screen)
+export function dailyProduction(dwarf: Dwarf): Partial<Resources> {
+  if (!dwarf.assignment) return {};
+  if (dwarf.status === "expedition" || dwarf.status === "crafting") return {}; // D1 & D3: dwarves on expedition/crafting don't work at home
+  if (dwarf.hungry && dwarf.assignment !== "farming") return {};  // D1: hungry dwarves don't work (except farmers)
+
+  const output = speciesRules[dwarf.species].production[dwarf.assignment];
+  if (!output) return {};  // D6: this species cannot do this job
+
+  const bonus = dwarf.hasTool && (dwarf.assignment === "woodcutting" || dwarf.assignment === "mining") ? 1 : 0; // D2: +1 with a tool on a compatible job
+
+  const result: Partial<Resources> = {};
+  (Object.keys(output) as ResourceKey[]).forEach((resource) => {
+    result[resource] = (output[resource] ?? 0) + bonus;
+  });
+  return result;
+}
 
 // D3: all forge recipes in one place (cost and duration in days)
 export const recipes = { tool: {wood: 3, stone: 2, days: 1}, weapon: {wood: 2, stone: 4, days: 2}};
@@ -16,6 +82,7 @@ export function forgeProblem(state: ColonyState, dwarfId: string, item: "tool" |
   if (state.forge !==  null) return "The forge is busy!";
   if (dwarf.status === "expedition") return `${dwarf.name} is away on an expedition!`;
   if (dwarf.hungry) return `${dwarf.name} is too hungry to work the forge!`;
+  if (!speciesRules[dwarf.species].forge.includes(item)) return `${dwarf.name} cannot forge a ${item}!`; // D6: species limitation
   if (state.resources.wood < recipe.wood || state.resources.stone < recipe.stone){
     return `A ${item} needs ${recipe.wood} timber and ${recipe.stone} stone!`;
   }
@@ -61,14 +128,17 @@ export function finishExpedition(state: ColonyState, tripId: string, rewards: Pa
     });
   }
 
+  const returned = state.dwarves.map((dwarf) =>
+    dwarf.id === trip.dwarfId
+      ? { ...dwarf, status: dwarf.assignment ? ("working" as const) : ("idle" as const) } // D4: the dwarf is home again, on success and on failure
+      : dwarf,
+  );
+  const joins = rewards !== null && newcomerJoins(state, trip.destination);  // D6: only a successful expedition brings the newcomer
+
   return {
     ...state,
     resources,
-    dwarves: state.dwarves.map((dwarf) =>
-      dwarf.id === trip.dwarfId
-        ? { ...dwarf, status: dwarf.assignment ? ("working" as const) : ("idle" as const) } // D4: the dwarf is home again, on success and on failure
-        : dwarf,
-    ),
+    dwarves: joins ? [...returned, newcomer] : returned,  // D6: the newcomer joins in the same update
     expedition: null,  // D4: nobody is away anymore
   };
 }
@@ -77,18 +147,9 @@ export function advanceDay(state: ColonyState): ColonyState {
   const resources = { ...state.resources };
 
   state.dwarves.forEach((dwarf) => {
-    if (!dwarf.assignment) return;
-    if (dwarf.status === "expedition" || dwarf.status === "crafting") return; // D1 & D3: dwarves on expedition/crafting don't work at home
-    if (dwarf.hungry && dwarf.assignment !== "farming") return;  // D1: hungry dwarves don't work (except farmers)
-
-    const output = production[dwarf.assignment];
-
-    const bonus = dwarf.hasTool && (dwarf.assignment === "woodcutting" || dwarf.assignment === "mining") ? 1 : 0; // D2: +1 with a tool on a compatible job
-  
-    Object.entries(output).forEach(([resource, amount]) => {
-      resources[resource as keyof Resources] += (amount ?? 0) + bonus;  // D2: add the tool bonus
+    Object.entries(dailyProduction(dwarf)).forEach(([resource, amount]) => {
+      resources[resource as ResourceKey] += amount ?? 0;  // D1, D2 & D6: what each character produces is decided in dailyProduction
     });
-
   });
 
   // D1: eating order list

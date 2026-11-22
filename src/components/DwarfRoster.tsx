@@ -1,4 +1,4 @@
-import { jobLabel } from "../simulation";
+import { jobLabel, speciesRules } from "../simulation";
 import type { Dwarf, JobType } from "../types";
 
 const jobs: Exclude<JobType, null>[] = [
@@ -36,9 +36,13 @@ export function DwarfRoster({ dwarves, onAssign, onEquipTool, onReturnTool, tool
         {dwarves.map((dwarf) => {
           const isAway = dwarf.status === "expedition";
           const isBusy = isAway || dwarf.status === "crafting"; // D3: away or at the forge, so the job can't be changed
+          const rules = speciesRules[dwarf.species];  // D6: what this species can and cannot do
+          const allowedJobs = jobs.filter((job) => rules.jobs.includes(job));  // D6: the job list only offers what the species can do
           const specialty = dwarf.specialty
             ? `Skilled in ${jobLabel(dwarf.specialty)}`
-            : "Generalist";
+            : rules.jobs.length < jobs.length
+              ? `${rules.jobs.map((job) => jobLabel(job)).join(", ")} only`  // D6: shows the limitation, e.g. "Mushroom Farm only"
+              : "Generalist";
 
           return (
             <article
@@ -67,7 +71,7 @@ export function DwarfRoster({ dwarves, onAssign, onEquipTool, onReturnTool, tool
                   }
                 >
                   <option value="">Unassigned</option>
-                  {jobs.map((job) => (
+                  {allowedJobs.map((job) => (
                     <option value={job} key={job}>
                       {jobLabel(job)}
                     </option>
@@ -78,14 +82,17 @@ export function DwarfRoster({ dwarves, onAssign, onEquipTool, onReturnTool, tool
                   <button className="tool-button" disabled={isAway} onClick={() => onReturnTool(dwarf.id)}>
                     Return tool
                   </button>
+                ) : rules.canUseTools ? (
+                  <button className="tool-button" disabled={dwarf.status === "expedition" || toolsInStorage < 1} onClick={() => {onEquipTool(dwarf.id)}}>
+                    Equip tool
+                  </button>
                 ) : (
-                <button className="tool-button" disabled={dwarf.status === "expedition" || toolsInStorage < 1} onClick={() => {onEquipTool(dwarf.id)}}>
-                  Equip tool
-                </button>
-              )}
+                  <small>{rules.label} cannot use tools.</small>  /* D6: no button, just the reason */
+                )}
               </div>
 
               <div className="badges">
+                <span className="status">{rules.label}</span> {/* D6: shows the species */}
                 <span className="status">{dwarf.status}</span>
                 {dwarf.hungry && <span className="status hungry">hungry</span>}  {/* D1: only shown when the dwarf got no food */}
                 {dwarf.hasTool && <span className="status tool">tool</span>} {/* D2: only shown if dwarf is equipped with tool */}

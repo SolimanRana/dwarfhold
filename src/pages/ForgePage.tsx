@@ -1,5 +1,6 @@
 import { Chronicle } from "../components/Chronicle";
 import { useColony } from "../state/ColonyContext";
+import { speciesRules } from "../simulation";
 import { useState } from "react";
 
 export function ForgePage() {
@@ -8,6 +9,9 @@ export function ForgePage() {
 
   const forgeJob = colony.forge; // D3: current forge job or null
   const currentSmith = forgeJob ? colony.dwarves.find((dwarf) => dwarf.id === forgeJob.dwarfId) : null; // D3: who is at the forge
+
+  const selectedSmith = colony.dwarves.find((dwarf) => dwarf.id === smithId);  // D6: the character chosen in the dropdown
+  const canForge = (item: "tool" | "weapon") => !selectedSmith || speciesRules[selectedSmith.species].forge.includes(item);  // D6: does this species allow this item?
 
   return (
     <div className="forge-layout">
@@ -26,6 +30,11 @@ export function ForgePage() {
               ))}
             </select>
           </label>
+
+          {/* D6: explains why a button is disabled */}
+          {selectedSmith && !canForge("weapon") && (
+            <p className="forge-status">{selectedSmith.name} is a {speciesRules[selectedSmith.species].label.toLowerCase()} and cannot forge weapons.</p>
+          )}
 
           {forgeJob ? (
             <p className="forge-status busy">
@@ -50,7 +59,7 @@ export function ForgePage() {
             <span>1 ⚒️</span>
             <i>·</i>
             <span>1 day</span>
-            <button onClick={() => startForge(smithId, "tool")}>Forge tool</button> {/* D3: starts a timed forge job */}
+            <button disabled={!canForge("tool")} onClick={() => startForge(smithId, "tool")}>Forge tool</button> {/* D3: starts a timed forge job (D6: disabled if the species cannot forge it) */}
           </div>
         </section>
 
@@ -69,7 +78,7 @@ export function ForgePage() {
             <span>1 🗡️</span>
             <i>·</i>
             <span>2 days</span>
-            <button onClick={() => startForge(smithId, "weapon")}>Forge weapon</button> {/* D3: starts a timed forge job */}
+            <button disabled={!canForge("weapon")} onClick={() => startForge(smithId, "weapon")}>Forge weapon</button> {/* D3: starts a timed forge job (D6: disabled if the species cannot forge it) */}
           </div>
         </section>
       </div>

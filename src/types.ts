@@ -1,6 +1,7 @@
 export type ResourceKey = "wood" | "stone" | "food" | "tools" | "weapons";
 export type JobType = "woodcutting" | "mining" | "farming" | null;
 export type DwarfStatus = "idle" | "working" | "expedition" | "crafting";
+export type Species = "dwarf" | "fairy";  // D6: who the character is
 export interface Resources { wood: number; stone: number; food: number; tools: number; weapons: number }
 
 export interface Dwarf { 
@@ -13,6 +14,7 @@ export interface Dwarf {
     specialty?: Exclude<JobType, null> ;
     hungry: boolean;  // D1: true if dwarf got no food last evening
     hasTool: boolean; // D2: true if dwarf has a tool
+    species: Species; // D6: dwarf or fairy (the type is still called Dwarf, but it covers every character)
 }
 
 export interface ColonyState { 
