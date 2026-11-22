@@ -187,119 +187,12 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     }
 
     setColony((current) => giveTool(current, id));  // D2: the rule lives in simulation.ts
-
-    /*setColony((current) => {
-      const dwarf = current.dwarves.find((item) => item.id === id);
-
-      // D2: invalid attempt changes nothing (D6: also when the species cannot use tools)
-      if(!dwarf || dwarf.hasTool || dwarf.status === "expedition" || current.resources.tools < 1 || !speciesRules[dwarf.species].canUseTools) {
-        return current;
-      }
-
-      return {
-        ...current,
-        resources: { ...current.resources, tools: current.resources.tools - 1 }, // D2: one tool leaves storage
-        dwarves: current.dwarves.map((item) =>
-          item.id === id ? { ...item, hasTool: true } : item, // D2: ...and goes to this dwarf
-        ),
-      };
-    });*/
   }
 
   // D2: take a tool from dwarf and return it to storage
   function returnTool(id: string) {
     setColony((current) => takeBackTool(current, id));  // D2: the rule lives in simulation.ts
-    /*setColony((current) => {
-      const dwarf = current.dwarves.find((item) => item.id === id);
-
-      // D2: invalid attempt changes nothing
-      if(!dwarf || !dwarf.hasTool || dwarf.status === "expedition") {
-        return current;
-      }
-
-      return {
-        ...current,
-        resources: { ...current.resources, tools: current.resources.tools + 1 }, // D2: one tool is added to storage
-        dwarves: current.dwarves.map((item) =>
-          item.id === id ? { ...item, hasTool: false } : item, // D2: ...taken back from this dwarf
-        ),
-      };
-    });*/
   }
-
-
-  /*function craftTool() {
-    if (colony.resources.wood < 3) {
-      setActivities((current) => [
-        {
-          id: crypto.randomUUID(),
-          day: colony.day,
-          message: "The forge needs more timber.",
-          tone: "warning" as const,
-        },
-        ...current,
-      ]);
-      return;
-    }
-
-    setColony((current) => ({
-      ...current,
-      resources: {
-        ...current.resources,
-        wood: current.resources.wood - 3,
-        stone: current.resources.stone - 2,
-        tools: current.resources.tools + 1,
-      },
-    }));
-    setActivities((current) =>
-      [
-        {
-          id: crypto.randomUUID(),
-          day: colony.day,
-          message: "A sturdy iron tool joins the stores.",
-          tone: "good" as const,
-        },
-        ...current,
-      ].slice(0, 6),
-    );
-  }
-
-  // D2: forge a weapon (stored as a colony resource)
-  function craftWeapon() {
-    if (colony.resources.wood < 2 || colony.resources.stone < 4) {  // D2: weapon costs 2 wood + 4 stone
-      setActivities((current) => [
-        {
-          id: crypto.randomUUID(),
-          day: colony.day,
-          message: "A weapon needs 2 timber and 4 stone",
-          tone: "warning" as const,
-        },
-        ...current,
-      ]);
-      return;
-    }
-
-    setColony((current) => ({
-      ...current,
-      resources: {
-        ...current.resources,
-        wood: current.resources.wood - 2,
-        stone: current.resources.stone - 4,
-        weapons: current.resources.weapons + 1,  // D2: one weapon added to storage
-      },
-    }));
-    setActivities((current) =>
-      [
-        {
-          id: crypto.randomUUID(),
-          day: colony.day,
-          message: "A new weapon joins the armory.",
-          tone: "good" as const,
-        },
-        ...current,
-      ].slice(0, 6),
-    );
-  }*/
 
   // D3: start forging an item with a chosen dwarf (takes time)
   function startForge(dwarfId: string, item: "tool" | "weapon") {
@@ -322,23 +215,6 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     const recipe = recipes[item];  // D3: cost and duration for item
 
     setColony((current) => beginForge(current, dwarfId, item));  // D3: the rule lives in simulation.ts
-    
-    /*setColony((current) => {
-      if (forgeProblem(current, dwarfId, item)) return current; // D3: safety check on the latest state (double clicks)
-      
-      return {
-        ...current,
-        resources: { 
-          ...current.resources,
-          wood: current.resources.wood - recipe.wood,  // D3: materials are paid when forging starts
-          stone: current.resources.stone - recipe.stone,
-        },
-        dwarves: current.dwarves.map((d) =>
-          d.id === dwarfId ? { ...d, status: "crafting" as const } : d, // D3: dwarf is at forge
-        ),
-        forge: {dwarfId, item, readyDay: current.day + recipe.days },  // D3: who what and when it is ready
-      };
-    });*/
 
     const smith = colony.dwarves.find((dwarf) => dwarf.id === dwarfId); // D3: for the name in the message
     setActivities((current) => [
@@ -439,11 +315,9 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     expeditionPending,
     togglePaused: () => setPaused((value) => !value),
     assignDwarf,
-    //craftTool,
     sendExpedition,
     equipTool,  // D2
     returnTool,  // D2
-    //craftWeapon, // D2
     startForge, // D3: replaces craftTool & craftWeapon
   };
 
