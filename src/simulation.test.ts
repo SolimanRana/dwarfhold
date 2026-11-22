@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceDay, attackMessage, canDoJob, dailyProduction, departExpedition, expeditionProblem, finishExpedition, forgeProblem, newcomerJoins, resolveAttack, rewardsText } from "./simulation";
+import { advanceDay, attackMessage, canDoJob, dailyProduction, departExpedition, expeditionProblem, finishExpedition, forgeProblem, newcomerJoins, resolveAttack, rewardsText, giveTool, takeBackTool, beginForge } from "./simulation";
 import type { ColonyState, Dwarf } from "./types";
 
 // D4: helper that builds a dwarf who is at home, fed and without a tool (change fields with `changes`)
@@ -70,7 +70,133 @@ describe("food and hunger (D1)", () => {
   });
 });
 
+describe("equipping tools (D2)", () => {
+  // D2: helper that builds a colony with the given dwarves and the given number of tools in storage
+  function withTools(dwarves: Dwarf[], tools: number): ColonyState {
+    return { ...makeColony(dwarves), resources: { wood: 0, stone: 0, food: 5, tools, weapons: 0 } };
+  }
 
+  it("moves a tool from storage to the dwarf", () => {
+    const after = giveTool(withTools([makeDwarf()], 1), "d1");
+
+    expect(after.resources.tools).toBe(0);  // D2: one tool left the storage...
+    expect(after.dwarves[0].hasTool).toBe(true);  // ...and the dwarf carries it
+  });
+
+  it("does not give a second tool to a dwarf who already has one", () => {
+    const state = withTools([makeDwarf({ hasTool: true })], 1);
+    expect(giveTool(state, "d1")).toBe(state);  // D2: one dwarf carries at most one tool, nothing changes
+  });
+
+  it("changes nothing when there is no tool in storage", () => {
+    const state = withTools([makeDwarf()], 0);
+    expect(giveTool(state, "d1")).toBe(state);
+  });
+
+  it("gives the last tool to only one dwarf", () => {
+    const once = giveTool(withTools([makeDwarf(), makeDwarf({ id: "d2" })], 1), "d1");
+    const twice = giveTool(once, "d2");  // D2: one tool can't be equipped by two dwarves
+
+    expect(twice.dwarves.map((dwarf) => dwarf.hasTool)).toEqual([true, false]);
+    expect(twice.resources.tools).toBe(0);
+  });
+
+  it("does not give or take back a tool while the dwarf is on an expedition", () => {
+    const withoutTool = withTools([makeDwarf({ status: "expedition" })], 1);
+    const withTool = withTools([makeDwarf({ status: "expedition", hasTool: true })], 0);
+
+    expect(giveTool(withoutTool, "d1")).toBe(withoutTool);
+    expect(takeBackTool(withTool, "d1")).toBe(withTool);
+  });
+
+  it("does not give a tool to a cave fairy", () => {
+    const state = withTools([makeFairy()], 1);
+    expect(giveTool(state, "f1")).toBe(state);  // D6: fairies cannot use tools
+  });
+
+  it("moves a returned tool back to storage", () => {
+    const after = takeBackTool(withTools([makeDwarf({ hasTool: true })], 0), "d1");
+
+    expect(after.resources.tools).toBe(1);
+    expect(after.dwarves[0].hasTool).toBe(false);
+  });
+
+  it("changes nothing when a dwarf without a tool returns one", () => {
+    const state = withTools([makeDwarf()], 1);
+    expect(takeBackTool(state, "d1")).toBe(state);
+  });
+
+  it("keeps the total number of tools the same when equipping and returning", () => {
+    const start = withTools([makeDwarf(), makeDwarf({ id: "d2" })], 2);
+    const after = takeBackTool(giveTool(giveTool(start, "d1"), "d2"), "d1");
+    const total = after.resources.tools + after.dwarves.filter((dwarf) => dwarf.hasTool).length;
+
+    expect(total).toBe(2);  // D2: tools in storage + tools carried never change
+  });
+});
+
+describe("forging takes time (D3)", () => {
+  // D3: helper that builds a colony with enough wood and stone for both recipes
+  function withMaterials(dwarves: Dwarf[], wood = 10, stone = 10): ColonyState {
+    return { ...makeColony(dwarves), resources: { wood, stone, food: 5, tools: 0, weapons: 0 } };
+  }
+
+  it("allows a dwarf at home who is fed to forge when there are enough materials", () => {
+    expect(forgeProblem(withMaterials([makeDwarf()]), "d1", "weapon")).toBeNull();
+  });
+
+  it("rejects a busy forge, a dwarf on an expedition and a hungry dwarf", () => {
+    const busy = { ...withMaterials([makeDwarf(), makeDwarf({ id: "d2", status: "crafting" })]), forge: { dwarfId: "d2", item: "tool" as const, readyDay: 2 } };
+
+    expect(forgeProblem(busy, "d1", "tool")).toBe("The forge is busy!");  // D3: only one forge job at a time
+    expect(forgeProblem(withMaterials([makeDwarf({ status: "expedition" })]), "d1", "tool")).not.toBeNull();
+    expect(forgeProblem(withMaterials([makeDwarf({ hungry: true })]), "d1", "tool")).not.toBeNull();
+  });
+
+  it("rejects forging when there is not enough wood or not enough stone", () => {
+    expect(forgeProblem(withMaterials([makeDwarf()], 2, 10), "d1", "tool")).not.toBeNull();  // D3: a tool needs 3 wood
+    expect(forgeProblem(withMaterials([makeDwarf()], 10, 3), "d1", "weapon")).not.toBeNull();  // D3: a weapon needs 4 stone
+  });
+
+  it("pays the materials at the start and records who forges what and when it is ready", () => {
+    const after = beginForge(withMaterials([makeDwarf()]), "d1", "weapon");
+
+    expect(after.resources).toMatchObject({ wood: 8, stone: 6, weapons: 0 });  // D3: paid now, the weapon comes later
+    expect(after.dwarves[0].status).toBe("crafting");
+    expect(after.forge).toEqual({ dwarfId: "d1", item: "weapon", readyDay: 3 });  // D3: day 1 + 2 days
+  });
+
+  it("changes nothing when the attempt is invalid", () => {
+    const state = withMaterials([makeDwarf()], 0, 0);
+    expect(beginForge(state, "d1", "tool")).toBe(state);  // D3: no materials used, no dwarf changed
+  });
+
+  it("finishes a tool after 1 day: the tool is stored and the dwarf goes back to work", () => {
+    const after = advanceDay(beginForge(withMaterials([makeDwarf()]), "d1", "tool"));
+
+    expect(after.resources.tools).toBe(1);
+    expect(after.dwarves[0].status).toBe("working");  // D3: back to their job (mining)
+    expect(after.forge).toBeNull();  // D3: the forge is free again
+  });
+
+  it("is not finished before the ready day", () => {
+    const after = advanceDay(beginForge(withMaterials([makeDwarf()]), "d1", "weapon"));  // D3: a weapon takes 2 days
+
+    expect(after.resources.weapons).toBe(0);
+    expect(after.dwarves[0].status).toBe("crafting");
+    expect(advanceDay(after).resources.weapons).toBe(1);  // D3: done after the second day
+  });
+
+  it("sends an unassigned smith back as idle", () => {
+    const after = advanceDay(beginForge(withMaterials([makeDwarf({ assignment: null, status: "idle" })]), "d1", "tool"));
+    expect(after.dwarves[0].status).toBe("idle");
+  });
+
+  it("finishes on time even if the smith gets hungry while forging", () => {
+    const forging = { ...beginForge(withMaterials([makeDwarf()]), "d1", "tool"), dwarves: [makeDwarf({ status: "crafting", hungry: true })] };
+    expect(advanceDay(forging).resources.tools).toBe(1);  // D3: once started, it always finishes
+  });
+});
 
 describe("expeditions (D4)", () => {
   it("allows an available dwarf to go", () => {
