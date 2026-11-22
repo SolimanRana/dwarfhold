@@ -70,6 +70,42 @@ export function dailyProduction(dwarf: Dwarf): Partial<Resources> {
   return result;
 }
 
+// D2: a tool goes from storage to a dwarf. Inventory and dwarf change together, or nothing changes
+export function giveTool(state: ColonyState, dwarfId: string): ColonyState {
+  const dwarf = state.dwarves.find((item) => item.id === dwarfId);
+
+  // D2: invalid attempt changes nothing (D6: also when the species cannot use tools)
+  if (!dwarf || dwarf.hasTool || dwarf.status === "expedition" || state.resources.tools < 1 || !speciesRules[dwarf.species].canUseTools) {
+    return state;
+  }
+
+  return {
+    ...state,
+    resources: { ...state.resources, tools: state.resources.tools - 1 },  // D2: one tool leaves storage
+    dwarves: state.dwarves.map((item) =>
+      item.id === dwarfId ? { ...item, hasTool: true } : item,  // D2: ...and goes to this dwarf
+    ),
+  };
+}
+
+// D2: a tool goes from a dwarf back to storage. Inventory and dwarf change together, or nothing changes
+export function takeBackTool(state: ColonyState, dwarfId: string): ColonyState {
+  const dwarf = state.dwarves.find((item) => item.id === dwarfId);
+
+  // D2: invalid attempt changes nothing
+  if (!dwarf || !dwarf.hasTool || dwarf.status === "expedition") {
+    return state;
+  }
+
+  return {
+    ...state,
+    resources: { ...state.resources, tools: state.resources.tools + 1 },  // D2: one tool goes back to storage
+    dwarves: state.dwarves.map((item) =>
+      item.id === dwarfId ? { ...item, hasTool: false } : item,  // D2: ...taken back from this dwarf
+    ),
+  };
+}
+
 // D7: the dragon. A successful expedition to its lair brings the dragon to Stonehome
 export const DRAGON_DESTINATION = "dragon-lair";
 export const DEFENSE_THRESHOLD = 2;  // D7: with at least this many weapons, Stonehome defends itself, and the fight uses up exactly this many
@@ -127,6 +163,26 @@ export function forgeProblem(state: ColonyState, dwarfId: string, item: "tool" |
   }
 
   return null; // D3: if everything is fine
+}
+
+// D3: the dwarf starts forging. Materials, dwarf and forge change together, or nothing changes
+export function beginForge(state: ColonyState, dwarfId: string, item: "tool" | "weapon"): ColonyState {
+  if (forgeProblem(state, dwarfId, item)) return state;  // D3: invalid attempt changes nothing
+
+  const recipe = recipes[item];  // D3: cost and duration for this item
+
+  return {
+    ...state,
+    resources: {
+      ...state.resources,
+      wood: state.resources.wood - recipe.wood,  // D3: materials are paid when forging starts
+      stone: state.resources.stone - recipe.stone,
+    },
+    dwarves: state.dwarves.map((dwarf) =>
+      dwarf.id === dwarfId ? { ...dwarf, status: "crafting" as const } : dwarf,  // D3: dwarf is at the forge
+    ),
+    forge: { dwarfId, item, readyDay: state.day + recipe.days },  // D3: who, what, and when it is ready
+  };
 }
 
 // D4: returns why a dwarf cannot be sent on an expedition or null if allowed
