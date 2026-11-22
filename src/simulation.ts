@@ -1,4 +1,4 @@
-import type { ColonyState, Dwarf, JobType, ResourceKey, Resources, Species } from "./types";
+import type { AttackReport, ColonyState, Dwarf, JobType, ResourceKey, Resources, Species } from "./types";
 
 export const production: Record<Exclude<JobType, null>, Partial<Resources>> = {
   woodcutting: { wood: 3 }, mining: { stone: 2 }, farming: { food: 4 },
@@ -70,6 +70,45 @@ export function dailyProduction(dwarf: Dwarf): Partial<Resources> {
   return result;
 }
 
+// D7: the dragon. A successful expedition to its lair brings the dragon to Stonehome
+export const DRAGON_DESTINATION = "dragon-lair";
+export const DEFENSE_THRESHOLD = 2;  // D7: with at least this many weapons, Stonehome defends itself, and the fight uses up exactly this many
+
+// D7: the dragon attacks. Defended if there are enough weapons (the fight uses them up), otherwise it takes half of the wood and half of the stone (rounded down)
+export function resolveAttack(state: ColonyState, attackId: string): ColonyState {
+  if (state.resources.weapons >= DEFENSE_THRESHOLD) {
+    return {
+      ...state,
+      resources: { ...state.resources, weapons: state.resources.weapons - DEFENSE_THRESHOLD },  // D7: a successful defense uses up the weapons
+      lastAttack: { id: attackId, day: state.day, defended: true, loot: {} },  // D7: nothing is taken
+    };
+  }
+
+  const loot = { wood: Math.floor(state.resources.wood / 2), stone: Math.floor(state.resources.stone / 2) };  // D7: always the same result for the same stock
+
+  return {
+    ...state,
+    resources: { ...state.resources, wood: state.resources.wood - loot.wood, stone: state.resources.stone - loot.stone },
+    lastAttack: { id: attackId, day: state.day, defended: false, loot },
+  };
+}
+
+// D7: the sentence for the chronicle and the attack panel
+export function attackMessage(report: AttackReport): string {
+  return report.defended
+    ? `The dragon followed the scout home, but Stonehome had at least ${DEFENSE_THRESHOLD} weapons and drove it off. The fight used up ${DEFENSE_THRESHOLD} weapons.`
+    : `The dragon followed the scout home and Stonehome had fewer than ${DEFENSE_THRESHOLD} weapons. It took ${report.loot.wood ?? 0} wood and ${report.loot.stone ?? 0} stone.`;
+}
+
+// D7: the rewards of an expedition as text, e.g. "+6 wood, +10 stone" (for the chronicle)
+export function rewardsText(rewards: Partial<Resources>): string {
+  const names: Record<ResourceKey, [string, string]> = { wood: ["wood", "wood"], stone: ["stone", "stone"], food: ["food", "food"], tools: ["tool", "tools"], weapons: ["weapon", "weapons"] };  // singular and plural
+  const parts = (["wood", "stone", "food", "tools", "weapons"] as ResourceKey[])
+    .filter((key) => (rewards[key] ?? 0) > 0)
+    .map((key) => `+${rewards[key]} ${names[key][rewards[key] === 1 ? 0 : 1]}`);
+  return parts.length > 0 ? parts.join(", ") : "no rewards";
+}
+
 // D3: all forge recipes in one place (cost and duration in days)
 export const recipes = { tool: {wood: 3, stone: 2, days: 1}, weapon: {wood: 2, stone: 4, days: 2}};
 
@@ -135,12 +174,15 @@ export function finishExpedition(state: ColonyState, tripId: string, rewards: Pa
   );
   const joins = rewards !== null && newcomerJoins(state, trip.destination);  // D6: only a successful expedition brings the newcomer
 
-  return {
+  const home: ColonyState = {
     ...state,
     resources,
     dwarves: joins ? [...returned, newcomer] : returned,  // D6: the newcomer joins in the same update
     expedition: null,  // D4: nobody is away anymore
   };
+
+  // D7: only a successful expedition to the dragon's lair brings the attack, in the same update as the rewards
+  return rewards !== null && trip.destination === DRAGON_DESTINATION ? resolveAttack(home, tripId) : home;
 }
 
 export function advanceDay(state: ColonyState): ColonyState {

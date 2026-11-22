@@ -8,6 +8,8 @@ let expeditionNumber = 16;
 const outcomes = {
   "crystal-cave": { rewards: { stone: 8, tools: 1 }, message: "The scout found a crystal seam and an abandoned mason's tool." },
   "old-mine": { rewards: { stone: 12, wood: 2 }, message: "The old mine still holds good stone and usable supports." },
+  // D7: the scout steals from the dragon's hoard. The dragon follows the scout home (handled in the game, not on the server)
+  "dragon-lair": { rewards: { stone: 10, wood: 6 }, message: "The scout slipped past the sleeping dragon and carried off a share of its hoard of timber and stone." },
 };
 
 app.use(cors()); app.use(express.json());

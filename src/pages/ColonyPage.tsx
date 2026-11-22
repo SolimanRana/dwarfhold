@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Chronicle } from "../components/Chronicle";
 import { DwarfRoster } from "../components/DwarfRoster";
-import { dailyProduction, expeditionProblem, jobLabel, NEWCOMER_DESTINATION, newcomerJoins, speciesRules } from "../simulation";
+import { attackMessage, dailyProduction, DEFENSE_THRESHOLD, DRAGON_DESTINATION, expeditionProblem, jobLabel, NEWCOMER_DESTINATION, newcomerJoins, speciesRules } from "../simulation";
 import { useColony } from "../state/ColonyContext";
 import type { Dwarf, ResourceKey } from "../types";
 
@@ -10,6 +10,7 @@ const destinationLabels: Record<string, string> = {
   "crystal-cave": "Crystal Cave",
   "old-mine": "The Old Mine",
   "blocked-pass": "Blocked Pass",
+  "dragon-lair": "Dragon's Lair",  // D7
 };
 
 // D4: short note behind a dwarf's name, so the player sees who can not go
@@ -32,6 +33,7 @@ export function ColonyPage() {
   const sendProblem = expeditionProblem(colony, expeditionDwarf);  // D4: why the selected dwarf can not go right now, or null
   const travelling = colony.expedition ? colony.dwarves.find((dwarf) => dwarf.id === colony.expedition?.dwarfId) : null;  // D4: who is away right now
   const rumour = newcomerJoins(colony, NEWCOMER_DESTINATION);  // D6: true while the newcomer has not joined yet
+  const attack = colony.lastAttack;  // D7: result of the latest dragon attack, or null
 
   // D6: the preview asks dailyProduction, the same function the simulation uses, so both always agree
   const dailyOutput = colony.dwarves.reduce<Record<ResourceKey, number>>(
@@ -107,6 +109,31 @@ export function ColonyPage() {
             </strong>
           </div>
         </section>
+
+        {/* D7: the defense status and the result of the latest dragon attack. It appears after the first attack, because the dragon only enters the story when a scout steals from its lair */}
+        {attack && (
+          <section className="panel">
+            <header>
+              <div>
+                <small>THE DRAGON</small>
+                <h2>Defense</h2>
+              </div>
+              <b>🐉</b>
+            </header>
+
+            <p>
+              Weapons in the armory: <strong>{colony.resources.weapons} / {DEFENSE_THRESHOLD}</strong>.{" "}
+              {colony.resources.weapons >= DEFENSE_THRESHOLD
+                ? `Stonehome is ready to defend itself. A fight would use up ${DEFENSE_THRESHOLD} weapons.`
+                : `Stonehome needs ${DEFENSE_THRESHOLD - colony.resources.weapons} more to be safe from the dragon.`}
+            </p>
+
+            <p style={{ color: attack.defended ? "#8fd3c8" : "#d47459" }}>
+              Latest attack (day {attack.day}): {attack.defended ? "DEFENDED. " : "LOOTED. "}
+              {attackMessage(attack)}
+            </p>
+          </section>
+        )}
       </section>
 
       <aside className="side-stack">
@@ -143,8 +170,18 @@ export function ColonyPage() {
               <option value="crystal-cave">Crystal Cave</option>
               <option value="old-mine">The Old Mine</option>
               <option value="blocked-pass">Blocked Pass</option>
+              <option value={DRAGON_DESTINATION}>Dragon's Lair</option> {/* D7 */}
             </select>
           </label>
+
+          {/* D7: warns before the player chooses the dragon's lair, and states the rules */}
+          {destination === DRAGON_DESTINATION && (
+            <p style={{ color: "#e2a84f" }}>
+              ⚠️ Rumour: a dragon sleeps on a hoard of timber and stone in this cave. A thief would be followed home. With {DEFENSE_THRESHOLD} or more
+              weapons Stonehome defends itself, but the fight uses up {DEFENSE_THRESHOLD} weapons. With fewer, the dragon takes half of the stored wood and stone.
+              A failed expedition does not wake the dragon.
+            </p>
+          )}
 
           <button
             disabled={sendProblem !== null}  // D4: blocked whenever the rules in expeditionProblem say no
@@ -165,7 +202,7 @@ export function ColonyPage() {
           )}
 
           {/* D6: a rumour tells the player where the newcomer can be found, until she has joined */}
-          {rumour && (
+          {rumour && destination === NEWCOMER_DESTINATION && (
             <p style={{ color: "#8fd3c8" }}>
               🧚 Rumour: faint lights flicker deep inside the Crystal Cave. Someone may be waiting there.
             </p>

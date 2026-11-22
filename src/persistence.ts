@@ -3,7 +3,7 @@ import { speciesRules } from "./simulation";
 
 // D5: where and how the game is saved in the browser
 export const SAVE_KEY = "dwarfhold-save";
-export const SAVE_VERSION = 2;  // D5: raise this number whenever the shape of ColonyState changes, so old saves are rejected safely. D6: 2 because every character now has a species
+export const SAVE_VERSION = 3;  // D5: raise this number whenever the shape of ColonyState changes, so old saves are rejected safely. D6: 2 because every character now has a species. D7: 3 because the colony now remembers the latest dragon attack
 
 // D5: the only two storage functions we need (a plain object with these works in tests too)
 export type StorageLike = Pick<Storage, "getItem" | "setItem">;
@@ -49,6 +49,16 @@ function isActivity(value: unknown): boolean {
   );
 }
 
+// D7: checks the result of a dragon attack (a defended attack takes nothing)
+function isAttackReport(value: unknown): boolean {
+  if (!isObject(value)) return false;
+  if (!isText(value.id) || !isCount(value.day) || typeof value.defended !== "boolean" || !isObject(value.loot)) return false;
+
+  const loot = Object.entries(value.loot);
+  if (value.defended && loot.length !== 0) return false;  // D7: if the colony defended itself, nothing was taken
+  return loot.every(([key, amount]) => ["wood", "stone"].includes(key) && isCount(amount));  // D7: the dragon only takes wood and stone
+}
+
 // D5: checks that unknown data really is a valid colony (including that the workers and the forge/expedition agree)
 function isColony(value: unknown): value is ColonyState {
   if (!isObject(value) || !isCount(value.day)) return false;
@@ -69,6 +79,9 @@ function isColony(value: unknown): value is ColonyState {
     if (dwarf.assignment !== null && !rules.jobs.includes(dwarf.assignment)) return false;
     if (dwarf.hasTool && !rules.canUseTools) return false;
   }
+
+  // D7: the latest attack is either missing (null) or a valid report
+  if (value.lastAttack !== null && !isAttackReport(value.lastAttack)) return false;
 
   // D5: the forge job must belong to a real dwarf, and exactly that dwarf must be marked as crafting
   const forge = value.forge;

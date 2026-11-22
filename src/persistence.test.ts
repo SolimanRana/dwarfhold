@@ -14,6 +14,7 @@ function makeColony(): ColonyState {
     ],
     forge: null,
     expedition: null,
+    lastAttack: null,
   };
 }
 
@@ -87,6 +88,37 @@ describe("species in saves (D6)", () => {
     for (const colony of [miner, withTool]) {
       expect(parseSave(JSON.stringify({ version: SAVE_VERSION, colony, activities: chronicle })).kind).toBe("invalid");
     }
+  });
+});
+
+describe("the dragon attack in saves (D7)", () => {
+  it("restores the latest attack", () => {
+    const colony = makeColony();
+    colony.lastAttack = { id: "trip-1", day: 6, defended: false, loot: { wood: 5, stone: 7 } };
+    const storage = makeStorage();
+    saveGame(storage, colony, chronicle);
+
+    expect(loadGame(storage, fresh).colony.lastAttack).toEqual(colony.lastAttack);
+  });
+
+  it("rejects a broken attack report", () => {
+    const reports = [
+      { id: "t", day: 6, defended: true, loot: { wood: 1 } },       // a defended attack cannot have loot
+      { id: "t", day: 6, defended: false, loot: { food: 3 } },      // the dragon only takes wood and stone
+      { id: "t", day: -1, defended: false, loot: {} },              // the day must be a whole number, not negative
+      { id: "t", day: 6, defended: "no", loot: {} },                // defended must be true or false
+    ];
+
+    for (const report of reports) {
+      const colony = { ...makeColony(), lastAttack: report };
+      expect(parseSave(JSON.stringify({ version: SAVE_VERSION, colony, activities: chronicle })).kind).toBe("invalid");
+    }
+  });
+
+  it("rejects a save without the attack field (an old save)", () => {
+    const colony = makeColony() as Partial<ColonyState>;
+    delete colony.lastAttack;
+    expect(parseSave(JSON.stringify({ version: SAVE_VERSION, colony, activities: chronicle })).kind).toBe("invalid");
   });
 });
 
