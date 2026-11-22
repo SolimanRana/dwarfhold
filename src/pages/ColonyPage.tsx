@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Chronicle } from "../components/Chronicle";
 import { DwarfRoster } from "../components/DwarfRoster";
-import { expeditionProblem, jobLabel, production } from "../simulation";
+import { dailyProduction, expeditionProblem, jobLabel, NEWCOMER_DESTINATION, newcomerJoins, speciesRules } from "../simulation";
 import { useColony } from "../state/ColonyContext";
 import type { Dwarf, ResourceKey } from "../types";
 
@@ -31,16 +31,14 @@ export function ColonyPage() {
 
   const sendProblem = expeditionProblem(colony, expeditionDwarf);  // D4: why the selected dwarf can not go right now, or null
   const travelling = colony.expedition ? colony.dwarves.find((dwarf) => dwarf.id === colony.expedition?.dwarfId) : null;  // D4: who is away right now
+  const rumour = newcomerJoins(colony, NEWCOMER_DESTINATION);  // D6: true while the newcomer has not joined yet
 
+  // D6: the preview asks dailyProduction, the same function the simulation uses, so both always agree
   const dailyOutput = colony.dwarves.reduce<Record<ResourceKey, number>>(
     (total, dwarf) => {
-      if (dwarf.status === "expedition" || dwarf.status === "crafting") return total; // D1 & D3: away or forging dwarves don't produce, so the preview matches the simulation
-      if (dwarf.assignment) {
-        const output = production[dwarf.assignment];
-        Object.entries(output).forEach(([resource, amount]) => {
-          total[resource as ResourceKey] += amount ?? 0;
-        });
-      }
+      Object.entries(dailyProduction(dwarf)).forEach(([resource, amount]) => {
+        total[resource as ResourceKey] += amount ?? 0;
+      });
       return total;
     },
     {
@@ -67,27 +65,38 @@ export function ColonyPage() {
           </header>
 
           <div className="job-grid">
-            {(["woodcutting", "mining", "farming"] as const).map((job) => (
-              <article key={job}>
-                <b>
-                  {job === "woodcutting"
-                    ? "🌲"
-                    : job === "mining"
-                      ? "⛏️"
-                      : "🍄"}
-                </b>
-                <h3>{jobLabel(job)}</h3>
-                <p>
-                  {
-                    colony.dwarves.filter(
-                      (dwarf) => dwarf.assignment === job,
-                    ).length
-                  }{" "}
-                  assigned
-                </p>
-                <strong>+{Object.values(production[job])[0]} / day</strong>
-              </article>
-            ))}
+            {(["woodcutting", "mining", "farming"] as const).map((job) => {
+              // D6: one rate per species that can do this job (a species without that job is skipped)
+              const rates = Object.values(speciesRules)
+                .filter((rules) => rules.production[job])
+                .map((rules) => ({ label: rules.label, amount: Object.values(rules.production[job] ?? {})[0] }));
+
+              return (
+                <article key={job}>
+                  <b>
+                    {job === "woodcutting"
+                      ? "🌲"
+                      : job === "mining"
+                        ? "⛏️"
+                        : "🍄"}
+                  </b>
+                  <h3>{jobLabel(job)}</h3>
+                  <p>
+                    {
+                      colony.dwarves.filter(
+                        (dwarf) => dwarf.assignment === job,
+                      ).length
+                    }{" "}
+                    assigned
+                  </p>
+                  <strong>
+                    {rates.length === 1
+                      ? `+${rates[0].amount} / day`
+                      : rates.map((rate) => `${rate.label} +${rate.amount}`).join(" · ") + " / day"}  {/* D6: e.g. "Dwarf +4 · Cave fairy +6 / day" */}
+                  </strong>
+                </article>
+              );
+            })}
           </div>
 
           <div className="net-line">
@@ -153,6 +162,13 @@ export function ColonyPage() {
           )}
           {!colony.expedition && sendProblem && (
             <p style={{ color: "#d47459" }}>{sendProblem}</p>
+          )}
+
+          {/* D6: a rumour tells the player where the newcomer can be found, until she has joined */}
+          {rumour && (
+            <p style={{ color: "#8fd3c8" }}>
+              🧚 Rumour: faint lights flicker deep inside the Crystal Cave. Someone may be waiting there.
+            </p>
           )}
 
           <p>

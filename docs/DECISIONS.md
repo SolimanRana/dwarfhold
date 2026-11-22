@@ -170,3 +170,37 @@ Counting forge time in game days means the forge needs no special handling after
 **Trade-off:**
 
 An interrupted expedition is lost, and one wrong value costs the whole save instead of repairing it. When a later requirement changes the shape of the colony (for example a new species), the version number must be raised, so old saves are discarded safely instead of breaking the game.
+
+## D6 - A new species joins Stonehome
+
+**Decision (who joins):**
+
+Lumi Glimmerwing, a cave fairy, joins Stonehome. Every character now has a species ("dwarf" or "fairy"), so the colony can tell them apart in the rules and in the interface. The newcomer arrives idle, not hungry and without a tool.
+
+**Decision (when and where):**
+
+Lumi joins after the first successful expedition to the Crystal Cave. A failed expedition never brings anyone. Lumi can only join once: the rule checks whether a fairy already lives in Stonehome, so no extra flag is needed. The Expedition panel tells the player about the rumour (until Lumi has joined), and the chronicle announces the arrival.
+
+**Decision (production):**
+
+Cave fairies are master mushroom farmers: 6 rations a day instead of 4. They can only farm (or stay unassigned), so they cannot mine or cut wood. The job list for a fairy only shows what she can do, and her card shows what she produces.
+
+**Decision (crafting limitation):**
+
+A fairy can forge tools but not weapons. If the player tries, the forge refuses with a clear message and nothing changes (the same rule as in D3: an invalid attempt changes nothing).
+
+**Decision (equipment):**
+
+The tool bonus only helps woodcutting and mining, which fairies cannot do. So fairies cannot be given a tool, and their card says so.
+
+**Decision (shared rules):**
+
+Lumi follows the same rules as the dwarves: eats one ration a day (and eats last, like all farmers, and still works when hungry), can be away on an expedition, can't change jobs while away or at the forge, and is saved and restored with the colony. Because saved characters now have a species, the save version is raised to 2, and older saves are rejected safely.
+
+**Reason for this decision:**
+
+One field (`species`) and one small table of species rules keep the differences in one place. The same function that calculates production is used by the daily simulation and by the Colony page, so the screen and the game cannot disagree. Making the differences a trade-off (high food output, but only one job and no weapons) gives the player a real decision.
+
+**Trade-off:**
+
+Only one new species and one fixed arrival make the rules simple to explain and test, but there is nothing more to discover after Lumi has joined. Raising the save version means players lose an old save once.

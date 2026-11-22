@@ -9,8 +9,8 @@ function makeColony(): ColonyState {
     day: 5,
     resources: { wood: 1, stone: 2, food: 3, tools: 0, weapons: 0 },
     dwarves: [
-      { id: "a", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hungry: false, hasTool: true, specialty: "mining" },
-      { id: "b", name: "Yrsa", title: "", icon: "", assignment: null, status: "idle", hungry: false, hasTool: false },
+      { id: "a", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hungry: false, hasTool: true, specialty: "mining", species: "dwarf" },
+      { id: "b", name: "Yrsa", title: "", icon: "", assignment: null, status: "idle", hungry: false, hasTool: false, species: "dwarf" },
     ],
     forge: null,
     expedition: null,
@@ -66,6 +66,30 @@ describe("save and restore (D5)", () => {
   });
 });
 
+describe("species in saves (D6)", () => {
+  const fairy = { id: "f", name: "Lumi", title: "", icon: "", assignment: "farming", status: "working", hungry: false, hasTool: false, species: "fairy" } as const;
+
+  it("restores a cave fairy who farms", () => {
+    const colony = makeColony();
+    colony.dwarves.push({ ...fairy });
+    const storage = makeStorage();
+    saveGame(storage, colony, chronicle);
+
+    expect(loadGame(storage, fresh).colony).toEqual(colony);
+  });
+
+  it("rejects a fairy with a job her species cannot do or with a tool", () => {
+    const miner = makeColony();
+    miner.dwarves.push({ ...fairy, assignment: "mining" });
+    const withTool = makeColony();
+    withTool.dwarves.push({ ...fairy, hasTool: true });
+
+    for (const colony of [miner, withTool]) {
+      expect(parseSave(JSON.stringify({ version: SAVE_VERSION, colony, activities: chronicle })).kind).toBe("invalid");
+    }
+  });
+});
+
 describe("corrupt or incompatible saves (D5)", () => {
   it("falls back to a new colony and says so when the saved text is broken", () => {
     for (const text of ["{{{ not json", "null", '{"version":1}']) {
@@ -79,6 +103,17 @@ describe("corrupt or incompatible saves (D5)", () => {
   it("rejects a save from another version", () => {
     const otherVersion = JSON.stringify({ version: SAVE_VERSION + 1, colony: makeColony(), activities: chronicle });
     expect(parseSave(otherVersion).kind).toBe("invalid");
+  });
+
+  it("rejects a current-version save whose characters have no species or an unknown one", () => {
+    const noSpecies = makeColony();
+    delete (noSpecies.dwarves[0] as Partial<typeof noSpecies.dwarves[0]>).species;
+    const unknown = makeColony();
+    (unknown.dwarves[0] as { species: string }).species = "troll";
+
+    for (const colony of [noSpecies, unknown]) {
+      expect(parseSave(JSON.stringify({ version: SAVE_VERSION, colony, activities: chronicle })).kind).toBe("invalid");
+    }
   });
 
   it("does not crash when the browser blocks storage", () => {
