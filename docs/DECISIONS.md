@@ -113,3 +113,34 @@ Counting in days fits the daily simulation. Paying at the start and allowing onl
 **Trade-off:**
 
 The player can't forge several items in parallel, even if several dwarves are free.
+
+## D4 - Resilient expeditions
+
+**Decision (who can go):**
+
+A dwarf can only be sent on an expedition if they are at home (not already away and not at the forge) and not hungry. This is the same rule as for forging in D3, so Stonehome has one clear idea of "available".
+
+**Decision (one expedition at a time):**
+
+Only one expedition can be travelling at once. Sending is blocked until the current one has finished, and the interface says why.
+
+**Decision (tools during an expedition):**
+
+A dwarf keeps their tool while they are away. The tool stays assigned to that dwarf, so nobody else can take it and it can't be returned or equipped during the trip. It gives no production bonus while the dwarf is away.
+
+**Decision (start and finish):**
+
+When a dwarf leaves, the colony state records one expedition (who went and where). When the result arrives, one single state update does everything together: it adds the rewards (only on success), sends the dwarf home and clears the expedition record. A result is only applied if the matching expedition record still exists, so the same result can never be applied twice.
+
+**Invalid or failed attempts:**
+
+- An invalid attempt (dwarf not available, or another expedition already out) changes nothing and shows a warning.
+- A failed expedition gives no rewards, but the dwarf still comes home and can work again.
+
+**Reason for this decision:**
+
+Recording the expedition in the colony state, and finishing it in one update, means the dwarf's status and the resources can never get out of sync, even if the server is slow or the player clicks twice. Keeping the tool with the dwarf avoids extra steps before departure and is consistent with the D2 rule that equipping and returning are blocked while a dwarf is away.
+
+**Trade-off:**
+
+One expedition at a time is simpler and safer, but the player can't send several dwarves at once. A tool is also unavailable to others while its owner is away.

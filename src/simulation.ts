@@ -1,4 +1,4 @@
-import type { ColonyState, JobType, Resources } from "./types";
+import type { ColonyState, JobType, ResourceKey, Resources } from "./types";
 
 export const production: Record<Exclude<JobType, null>, Partial<Resources>> = {
   woodcutting: { wood: 3 }, mining: { stone: 2 }, farming: { food: 4 },
@@ -21,6 +21,56 @@ export function forgeProblem(state: ColonyState, dwarfId: string, item: "tool" |
   }
 
   return null; // D3: if everything is fine
+}
+
+// D4: returns why a dwarf cannot be sent on an expedition or null if allowed
+export function expeditionProblem(state: ColonyState, dwarfId: string): string | null {
+  const dwarf = state.dwarves.find((d) => d.id === dwarfId);
+
+  if (!dwarf) return "No dwarf selected!";
+  if (state.expedition !== null) return "An expedition is already out. Wait until it returns!";
+  if (dwarf.status === "expedition") return `${dwarf.name} is already away!`;
+  if (dwarf.status === "crafting") return `${dwarf.name} is busy at the forge!`;
+  if (dwarf.hungry) return `${dwarf.name} is too hungry to travel!`;
+
+  return null; // D4: if everything is fine
+}
+
+// D4: the dwarf leaves. Status and expedition record change together, or nothing changes
+export function departExpedition(state: ColonyState, tripId: string, dwarfId: string, destination: string): ColonyState {
+  if (expeditionProblem(state, dwarfId)) return state;  // D4: invalid attempt changes nothing
+
+  return {
+    ...state,
+    dwarves: state.dwarves.map((dwarf) =>
+      dwarf.id === dwarfId ? { ...dwarf, status: "expedition" as const } : dwarf,
+    ),
+    expedition: { id: tripId, dwarfId, destination },
+  };
+}
+
+// D4: the result arrived. rewards is null if the expedition failed
+export function finishExpedition(state: ColonyState, tripId: string, rewards: Partial<Resources> | null): ColonyState {
+  const trip = state.expedition;
+  if (!trip || trip.id !== tripId) return state;  // D4: this trip is not out (anymore), so it can never be applied twice
+
+  const resources = { ...state.resources };
+  if (rewards) {
+    (Object.keys(rewards) as ResourceKey[]).forEach((key) => {
+      resources[key] += rewards[key] ?? 0;  // D4: rewards are added only on success
+    });
+  }
+
+  return {
+    ...state,
+    resources,
+    dwarves: state.dwarves.map((dwarf) =>
+      dwarf.id === trip.dwarfId
+        ? { ...dwarf, status: dwarf.assignment ? ("working" as const) : ("idle" as const) } // D4: the dwarf is home again, on success and on failure
+        : dwarf,
+    ),
+    expedition: null,  // D4: nobody is away anymore
+  };
 }
 
 export function advanceDay(state: ColonyState): ColonyState {

@@ -1,9 +1,20 @@
 import { useState } from "react";
 import { Chronicle } from "../components/Chronicle";
 import { DwarfRoster } from "../components/DwarfRoster";
-import { jobLabel, production } from "../simulation";
+import { expeditionProblem, jobLabel, production } from "../simulation";
 import { useColony } from "../state/ColonyContext";
-import type { ResourceKey } from "../types";
+import type { Dwarf, ResourceKey } from "../types";
+
+// D4: readable destination names for the interface
+const destinationLabels: Record<string, string> = {
+  "crystal-cave": "Crystal Cave",
+  "old-mine": "The Old Mine",
+  "blocked-pass": "Blocked Pass",
+};
+
+// D4: short note behind a dwarf's name, so the player sees who can not go
+const statusNote = (dwarf: Dwarf) =>
+  dwarf.status === "expedition" ? " (away)" : dwarf.status === "crafting" ? " (at the forge)" : dwarf.hungry ? " (hungry)" : "";
 
 export function ColonyPage() {
   const {
@@ -18,9 +29,12 @@ export function ColonyPage() {
   const [destination, setDestination] = useState("crystal-cave");
   const [expeditionDwarf, setExpeditionDwarf] = useState("dwarf-3");
 
+  const sendProblem = expeditionProblem(colony, expeditionDwarf);  // D4: why the selected dwarf can not go right now, or null
+  const travelling = colony.expedition ? colony.dwarves.find((dwarf) => dwarf.id === colony.expedition?.dwarfId) : null;  // D4: who is away right now
+
   const dailyOutput = colony.dwarves.reduce<Record<ResourceKey, number>>(
     (total, dwarf) => {
-      if (dwarf.status === "expedition") return total; // D1: away dwarves don't produce, so the preview matches the simulation
+      if (dwarf.status === "expedition" || dwarf.status === "crafting") return total; // D1 & D3: away or forging dwarves don't produce, so the preview matches the simulation
       if (dwarf.assignment) {
         const output = production[dwarf.assignment];
         Object.entries(output).forEach(([resource, amount]) => {
@@ -96,6 +110,7 @@ export function ColonyPage() {
             <b>🗺️</b>
           </header>
 
+          {/* D4: the scout list shows if a dwarf is away, at the forge or hungry */}
           <label>
             Scout
             <select
@@ -104,7 +119,7 @@ export function ColonyPage() {
             >
               {colony.dwarves.map((dwarf) => (
                 <option key={dwarf.id} value={dwarf.id}>
-                  {dwarf.name}
+                  {dwarf.name}{statusNote(dwarf)}
                 </option>
               ))}
             </select>
@@ -123,14 +138,27 @@ export function ColonyPage() {
           </label>
 
           <button
-            disabled={expeditionPending}
+            disabled={sendProblem !== null}  // D4: blocked whenever the rules in expeditionProblem say no
             onClick={() => sendExpedition(expeditionDwarf, destination)}
           >
             {expeditionPending ? "Beyond the gate…" : "Send expedition"}
           </button>
+
+          {/* D4: tells the player who is away and where to, or why the selected dwarf can not go */}
+          {travelling && colony.expedition && (
+            <p style={{ color: "#e2a84f" }}>
+              🧭 {travelling.name} is travelling to{" "}
+              {destinationLabels[colony.expedition.destination] ?? colony.expedition.destination}.
+            </p>
+          )}
+          {!colony.expedition && sendProblem && (
+            <p style={{ color: "#d47459" }}>{sendProblem}</p>
+          )}
+
           <p>
-            A result returns in one request. The selected dwarf is unavailable
-            while travelling.
+            Only one expedition can travel at a time. A travelling dwarf does
+            not work, forge or change jobs, and keeps their tool. If the
+            expedition fails, the dwarf comes home without rewards.
           </p>
         </section>
 

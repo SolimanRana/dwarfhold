@@ -1,11 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
-import { advanceDay, forgeProblem, jobLabel, recipes } from "../simulation";
+import { advanceDay, departExpedition, expeditionProblem, finishExpedition, forgeProblem, jobLabel, recipes } from "../simulation";
 import type {
   Activity,
   ColonyState,
   JobType,
-  ResourceKey,
 } from "../types";
 import { ColonyContext, type ColonyContextValue } from "./ColonyContext";
 
@@ -52,13 +51,13 @@ const initialState: ColonyState = {
       hasTool: false, // D2: no dwarf starts with a tool
     },
   ],
-  forge: null  // D3: no forge job at the start
+  forge: null,  // D3: no forge job at the start
+  expedition: null,  // D4: nobody is away at the start
 };
 
 export function ColonyProvider({ children }: { children: ReactNode }) {
   const [colony, setColony] = useState(initialState);
   const [paused, setPaused] = useState(false);
-  const [expeditionPending, setExpeditionPending] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([
     {
       id: "welcome",
@@ -66,6 +65,9 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
       message: "The forge fires are lit. Stonehome wakes.",
     },
   ]);
+
+  const expeditionPending = colony.expedition !== null;  // D4: derived from the colony state, so it can't get out of sync
+  const sendingRef = useRef(false);  // D4: remembers at once that a send is in progress, so a quick double click is ignored
 
   useEffect(() => {
     if (paused) return;
@@ -79,20 +81,35 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
   }, [paused]);
 
   function assignDwarf(id: string, assignment: JobType) {
+    const dwarf = colony.dwarves.find((item) => item.id === id);
+
+    // D4: a dwarf who is away or at the forge keeps their job, so the worker state can't contradict itself
+    if (!dwarf || dwarf.status === "expedition" || dwarf.status === "crafting") {
+      setActivities((current) => [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: `${dwarf?.name ?? "A dwarf"} is busy and can't change jobs now.`,
+          tone: "warning" as const,
+        },
+        ...current,
+      ].slice(0, 6));
+      return;
+    }
+
     setColony((current) => ({
       ...current,
-      dwarves: current.dwarves.map((dwarf) =>
-        dwarf.id === id
+      dwarves: current.dwarves.map((item) =>
+        item.id === id && item.status !== "expedition" && item.status !== "crafting"  // D4: safety check on the latest state
           ? {
-              ...dwarf,
+              ...item,
               assignment,
               status: assignment ? "working" : "idle",
             }
-          : dwarf,
+          : item,
       ),
     }));
 
-    const dwarf = colony.dwarves.find((item) => item.id === id);
     setActivities((current) =>
       [
         {
@@ -269,16 +286,18 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
   }
 
   async function sendExpedition(dwarfId: string, destination: string) {
-    const dwarf = colony.dwarves.find((item) => item.id === dwarfId);
-    if (!dwarf) return;
+    if (sendingRef.current) return;  // D4: a send is already in progress, ignore repeated clicks
 
-    // D3: a dwarf at the forge can't go on an expedition
-    if (dwarf.status === "crafting") {
+    const dwarf = colony.dwarves.find((item) => item.id === dwarfId);
+    const problem = expeditionProblem(colony, dwarfId);  // D4: check all rules first
+
+    if (!dwarf || problem) {
+      // D4: invalid attempt, only write a warning, change nothing else
       setActivities((current) => [
         {
           id: crypto.randomUUID(),
           day: colony.day,
-          message: `${dwarf.name} is busy at the forge.`,
+          message: problem ?? "No dwarf selected!",
           tone: "warning" as const,
         },
         ...current,
@@ -286,13 +305,10 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setExpeditionPending(true);
-    setColony((current) => ({
-      ...current,
-      dwarves: current.dwarves.map((item) =>
-        item.id === dwarf.id ? { ...item, status: "expedition" } : item,
-      ),
-    }));
+    sendingRef.current = true;  // D4: from now on repeated clicks are ignored
+    const tripId = crypto.randomUUID();  // D4: identifies this one trip, so its result can only be applied once
+
+    setColony((current) => departExpedition(current, tripId, dwarf.id, destination));  // D4: dwarf leaves and the trip is recorded together
     setActivities((current) => [
       {
         id: crypto.randomUUID(),
@@ -300,29 +316,12 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
         message: `${dwarf.name} departed for ${destination.replace("-", " ")}.`,
       },
       ...current,
-    ]);
+    ].slice(0, 6));
 
     try {
       const result = await beginExpedition(dwarf.id, destination);
 
-      setColony((current) => ({
-        ...current,
-        resources: Object.entries(result.rewards).reduce(
-          (all, [key, amount]) => ({
-            ...all,
-            [key]: all[key as ResourceKey] + (amount ?? 0),
-          }),
-          current.resources,
-        ),
-        dwarves: current.dwarves.map((item) =>
-          item.id === dwarf.id
-            ? {
-                ...item,
-                status: item.assignment ? "working" : "idle",
-              }
-            : item,
-        ),
-      }));
+      setColony((current) => finishExpedition(current, tripId, result.rewards));  // D4: rewards are added and the dwarf comes home in one update
       setActivities((current) =>
         [
           {
@@ -335,23 +334,25 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
         ].slice(0, 6),
       );
     } catch (error) {
+      setColony((current) => finishExpedition(current, tripId, null));  // D4: no rewards, but the dwarf still comes home
       setActivities((current) =>
         [
           {
             id: crypto.randomUUID(),
             day: colony.day,
-            message:
+            message: `${
               error instanceof Error
                 ? error.message
-                : "The expedition was lost from view.",
+                : "The expedition was lost from view."
+            } ${dwarf.name} returned home empty-handed.`,
             tone: "warning" as const,
           },
           ...current,
         ].slice(0, 6),
       );
+    } finally {
+      sendingRef.current = false;  // D4: the next expedition may be sent
     }
-
-    setExpeditionPending(false);
   }
 
   const value: ColonyContextValue = {
