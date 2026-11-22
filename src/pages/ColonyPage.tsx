@@ -112,7 +112,7 @@ export function ColonyPage() {
 
         {/* D7: the defense status and the result of the latest dragon attack. It appears after the first attack, because the dragon only enters the story when a scout steals from its lair */}
         {attack && (
-          <section className="panel">
+          <section className="panel defense">
             <header>
               <div>
                 <small>THE DRAGON</small>
@@ -128,7 +128,7 @@ export function ColonyPage() {
                 : `Stonehome needs ${DEFENSE_THRESHOLD - colony.resources.weapons} more to be safe from the dragon.`}
             </p>
 
-            <p style={{ color: attack.defended ? "#8fd3c8" : "#d47459" }}>
+            <p className={attack.defended ? "note-info" : "note-danger"}>
               Latest attack (day {attack.day}): {attack.defended ? "DEFENDED. " : "LOOTED. "}
               {attackMessage(attack)}
             </p>
@@ -176,7 +176,7 @@ export function ColonyPage() {
 
           {/* D7: warns before the player chooses the dragon's lair, and states the rules */}
           {destination === DRAGON_DESTINATION && (
-            <p style={{ color: "#e2a84f" }}>
+            <p className="note-warning">
               ⚠️ Rumour: a dragon sleeps on a hoard of timber and stone in this cave. A thief would be followed home. With {DEFENSE_THRESHOLD} or more
               weapons Stonehome defends itself, but the fight uses up {DEFENSE_THRESHOLD} weapons. With fewer, the dragon takes half of the stored wood and stone.
               A failed expedition does not wake the dragon.
@@ -192,18 +192,18 @@ export function ColonyPage() {
 
           {/* D4: tells the player who is away and where to, or why the selected dwarf can not go */}
           {travelling && colony.expedition && (
-            <p style={{ color: "#e2a84f" }}>
+            <p className="note-warning">
               🧭 {travelling.name} is travelling to{" "}
               {destinationLabels[colony.expedition.destination] ?? colony.expedition.destination}.
             </p>
           )}
           {!colony.expedition && sendProblem && (
-            <p style={{ color: "#d47459" }}>{sendProblem}</p>
+            <p className="note-danger">{sendProblem}</p>
           )}
 
           {/* D6: a rumour tells the player where the newcomer can be found, until she has joined */}
           {rumour && destination === NEWCOMER_DESTINATION && (
-            <p style={{ color: "#8fd3c8" }}>
+            <p className="note-info">
               🧚 Rumour: faint lights flicker deep inside the Crystal Cave. Someone may be waiting there.
             </p>
           )}

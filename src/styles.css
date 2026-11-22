@@ -23,3 +23,12 @@
 .forge-picker select{display:block;width:100%;margin-top:5px;background:#100e0b;color:#d8c8ae;border:1px solid #4d3f30;padding:5px}
 .forge-status{margin:10px 0 0;font:12px Barlow Condensed;color:#927b60}
 .forge-status.busy{color:#e2a84f}
+
+/* D7: dragon defense panel */
+.defense p{margin:10px 14px;font:12px Barlow Condensed;line-height:1.4;color:#c2ad8e}
+
+/* D4, D6, D7: colored notes instead of inline styles */
+p.note-info{color:#8fd3c8}
+p.note-warning{color:#e2a84f}
+p.note-danger{color:#d47459}
+
