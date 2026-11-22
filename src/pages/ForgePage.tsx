@@ -1,6 +1,6 @@
 import { Chronicle } from "../components/Chronicle";
 import { useColony } from "../state/ColonyContext";
-import { speciesRules } from "../simulation";
+import { speciesRules, recipes } from "../simulation";
 import { useState } from "react";
 
 export function ForgePage() {
@@ -52,18 +52,18 @@ export function ForgePage() {
             <p>Equip the hold for future work.</p>
           </div>
           <div className="recipe">
-            <span>3 🪵</span>
+            <span>{recipes.tool.wood} 🪵</span>
             <i>+</i>
-            <span>2 🪨</span>
+            <span>{recipes.tool.stone} 🪨</span>
             <i>→</i>
             <span>1 ⚒️</span>
             <i>·</i>
-            <span>1 day</span>
+            <span>{recipes.tool.days} {recipes.tool.days === 1 ? "day" : "days"}</span>
             <button disabled={!canForge("tool")} onClick={() => startForge(smithId, "tool")}>Forge tool</button> {/* D3: starts a timed forge job (D6: disabled if the species cannot forge it) */}
           </div>
         </section>
 
-        {/* D2: weapon recipe, cost 2 wood + 4 stone */}
+        {/* D2: weapon recipe (costs in recipes) */}
         <section className="panel forge">
           <div>
             <small>EMBER FORGE</small>
@@ -71,13 +71,13 @@ export function ForgePage() {
             <p>Prepare Stonehome for hostile events</p>
           </div>
           <div className="recipe">
-            <span>2 🪵</span>
+            <span>{recipes.weapon.wood} 🪵</span>
             <i>+</i>
-            <span>4 🪨</span>
+            <span>{recipes.weapon.stone} 🪨</span>
             <i>→</i>
             <span>1 🗡️</span>
             <i>·</i>
-            <span>2 days</span>
+            <span>{recipes.weapon.days} {recipes.weapon.days === 1 ? "day" : "days"}</span>
             <button disabled={!canForge("weapon")} onClick={() => startForge(smithId, "weapon")}>Forge weapon</button> {/* D3: starts a timed forge job (D6: disabled if the species cannot forge it) */}
           </div>
         </section>
