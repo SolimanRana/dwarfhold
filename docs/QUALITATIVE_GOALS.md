@@ -6,15 +6,15 @@ We chose three goals that fit how Dwarfhold is used: the game runs continuously 
 
 **Why it matters:**
 
-Two things change the colony at the same time: the daily timer and the expedition result that arrives 2 to 5 seconds after the click. If these updates are done in separate steps, the state can contradict itself, for example a dwarf marked as away without a trip, rewards added twice, or the attack happening without the rewards.
+Two things change the colony at the same time: the daily timer and the expedition result that arrives a few seconds after the click. If these updates are done in separate steps, the state can contradict itself, for example a dwarf marked as away without a trip, rewards added twice, or the attack happening without the rewards.
 
 **Decisions and trade-offs:**
 
-- All rules are pure functions that take the whole colony state and return a new one (`advanceDay`, `giveTool`, `takeBackTool`, `beginForge`, `departExpedition`, `finishExpedition`, `resolveAttack`))
+- All rules are pure functions in `simulation.ts` that take the whole colony state and return a new one (`advanceDay`, `giveTool`, `takeBackTool`, `beginForge`, `departExpedition`, `finishExpedition`, `resolveAttack`)
 - The provider always uses `setColony((current) => ...)`, so every change is applied to the latest state, not to an old copy
 - Rewards, the scout's return, the newcomer and the dragon attack are applied in one single update (see D6 and D7)
 - Every expedition has a trip id, so a result can only be applied once and the result of a trip that is not out is ignored. A `useRef` guard ignores a quick second click
-- `dailyProduction`, `expeditionProblem` and `forgeProblem` are used by both the game and the screens, so the preview can't disagree with the simulation
+- `dailyProduction` and `expeditionProblem` are used by both the game and the screens, and the Forge page reads the same species table (`speciesRules`) as the rules, so the preview can't disagree with the simulation
 - Rules are checked again inside the update (safety check on the latest state)
 - Trade-off: only one expedition and one forge job at a time, which limits the player but keeps the state easy to reason about. The same rule is checked in several places (button, rule function, update), which is repetitive but safe
 
@@ -53,15 +53,17 @@ Requirements were added during the exam by two people in the same files (D4 to D
 
 - Rules are separated from the interface: `simulation.ts` holds the rules as pure functions and small tables (`speciesRules`, `recipes`, `DEFENSE_THRESHOLD`, `DRAGON_DESTINATION`), `types.ts` the shapes, `persistence.ts` saving, and the components only show and call
 - Pure functions can be tested without a browser
-- Every change is marked with a `// Dn:` comment, every decision is documented in `DECISIONS.md`, and each requirement was developed on its own branch with its own commit
+- Every change is marked with a `// Dn:` comment, every decision is documented in `DECISIONS.md`, and each requirement was developed on its own branch and merged through a pull request
 - Trade-off: more small functions and indirection than a quick solution, and the `Dwarf` type now also describes fairies. Some behaviour (the chronicle effect, screens) is only tested by hand
 
 **How we evaluate it:**
 
 - `npm test` (all unit tests pass) and `npm run build` (no type errors)
-- A rule change touches one place: for example the dragon threshold is one constant, a new species is one entry in `speciesRules` plus the save check
-- - Searching `D7:` (Ctrl/Cmd + Shift + F) finds every place that belongs to a requirement
+- A rule change touches few places: the dragon threshold is one constant (tests and docs mention the number 2 too), and a new species needs the `Species` type, one entry in `speciesRules` (TypeScript reports an error if it is missing) and the list of species in the save check
+- Searching `D7:` (Cmd/Ctrl + Shift + F) finds every place that belongs to a requirement
 
 ## Known limits
 
-Every requirement (D1 to D7) has its own unit tests. The screens and the provider have no automated tests, only the manual checks listed above.
+- Every requirement (D1 to D7) has its own unit tests. The screens and the provider have no automated tests, only the manual checks listed above.
+- Some chronicle messages use the day from the moment of the click, so in rare cases they can be one day old (the game state is always correct).
+- Double-clicking "Forge" can show the "started forging" message twice, although only one forge job is started.
